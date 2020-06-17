@@ -8,7 +8,7 @@ this project has a couple of goals:
 4. provide a bin `gem`
 5. use more gems to do the heavy lifting instead of own-rolled code
 
-My previous attempts at a complete rewrite have been seriously hampered by MapDB's absolute necessity to navigate the game world in a reasonable manner, and the fact than any Lich api can exist within it.  Without a way to isolate and refactor we will never be able to improve.
+My previous attempts at a complete rewrite have been seriously hampered by MapDB's absolute necessity to navigate the game world in a reasonable manner, and the fact than any Lich API can be called within it.  Without a way to isolate and refactor we will never be able to improve.
 
 **backwards compatibility with all systems and features is not a design goal**
 
