@@ -19,7 +19,6 @@ module Settings
 
   def self.get(scope)
     Script.current do |script|
-      #Log.out(script, label: script.name)
       @mutex.synchronize {
         unless @settings[script.name] and @settings[script.name][scope]
           begin
@@ -40,7 +39,8 @@ module Settings
             rescue
               respond "--- Lich: error: #{$!}"
               respond $!.backtrace[0..1]
-              exit
+              respond "... cleaning up bad data"
+              hash = {}
             end
             @settings[script.name][scope] = hash
           end

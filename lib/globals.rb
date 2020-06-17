@@ -601,7 +601,7 @@ def wait_while(announce=nil, timeout: nil)
          return :timeout if ttl && Time.now > ttl
       end
    rescue Exception => exception
-      Log.out(exception, label: :error)
+      pp exception
    ensure
       Thread.current.priority = priosave   
    end
@@ -1489,7 +1489,7 @@ def respond(first = "", *messages)
          str = str.gsub('&', '&amp;').gsub('<', '&lt;').gsub('>', '&gt;')
       end
       wait_while { XMLData.in_stream }
-      $_CLIENT_.puts(str)
+      $_CLIENT_.puts(str) unless $_CLIENT_.nil?
       if $_DETACHABLE_CLIENT_
          $_DETACHABLE_CLIENT_.puts(str) rescue nil
       end
@@ -2049,4 +2049,371 @@ def dothistimeout (action, timeout, success_line)
          end
       }
    }
+end
+
+
+def sf_to_wiz(line)
+   begin
+      return line if line == "\r\n"
+
+      if $sftowiz_multiline
+         $sftowiz_multiline = $sftowiz_multiline + line
+         line = $sftowiz_multiline
+      end
+      if (line.scan(/<pushStream[^>]*\/>/).length > line.scan(/<popStream[^>]*\/>/).length)
+         $sftowiz_multiline = line
+         return nil
+      end
+      if (line.scan(/<style id="\w+"[^>]*\/>/).length > line.scan(/<style id=""[^>]*\/>/).length)
+         $sftowiz_multiline = line
+         return nil
+      end
+      $sftowiz_multiline = nil
+      if line =~ /<LaunchURL src="(.*?)" \/>/
+         $_CLIENT_.puts "\034GSw00005\r\nhttps://www.play.net#{$1}\r\n"
+      end
+      if line =~ /<preset id='speech'>(.*?)<\/preset>/m
+         line = line.sub(/<preset id='speech'>.*?<\/preset>/m, "#{$speech_highlight_start}#{$1}#{$speech_highlight_end}")
+      end
+      if line =~ /<pushStream id="thoughts"[^>]*>(?:<a[^>]*>)?([A-Z][a-z]+)(?:<\/a>)?\s*([\s\[\]\(\)A-z]+)?:(.*?)<popStream\/>/m
+         line = line.sub(/<pushStream id="thoughts"[^>]*>(?:<a[^>]*>)?[A-Z][a-z]+(?:<\/a>)?\s*[\s\[\]\(\)A-z]+:.*?<popStream\/>/m, "You hear the faint thoughts of #{$1} echo in your mind:\r\n#{$2}#{$3}")
+      end
+      if line =~ /<pushStream id="voln"[^>]*>\[Voln \- (?:<a[^>]*>)?([A-Z][a-z]+)(?:<\/a>)?\]\s*(".*")[\r\n]*<popStream\/>/m
+         line = line.sub(/<pushStream id="voln"[^>]*>\[Voln \- (?:<a[^>]*>)?([A-Z][a-z]+)(?:<\/a>)?\]\s*(".*")[\r\n]*<popStream\/>/m, "The Symbol of Thought begins to burn in your mind and you hear #{$1} thinking, #{$2}\r\n")
+      end
+      if line =~ /<stream id="thoughts"[^>]*>([^:]+): (.*?)<\/stream>/m
+         line = line.sub(/<stream id="thoughts"[^>]*>.*?<\/stream>/m, "You hear the faint thoughts of #{$1} echo in your mind:\r\n#{$2}")
+      end
+      if line =~ /<pushStream id="familiar"[^>]*>(.*)<popStream\/>/m
+         line = line.sub(/<pushStream id="familiar"[^>]*>.*<popStream\/>/m, "\034GSe\r\n#{$1}\034GSf\r\n")
+      end
+      if line =~ /<pushStream id="death"\/>(.*?)<popStream\/>/m
+         line = line.sub(/<pushStream id="death"\/>.*?<popStream\/>/m, "\034GSw00003\r\n#{$1}\034GSw00004\r\n")
+      end
+      if line =~ /<style id="roomName" \/>(.*?)<style id=""\/>/m
+         line = line.sub(/<style id="roomName" \/>.*?<style id=""\/>/m, "\034GSo\r\n#{$1}\034GSp\r\n")
+      end
+      line.gsub!(/<style id="roomDesc"\/><style id=""\/>\r?\n/, '')
+      if line =~ /<style id="roomDesc"\/>(.*?)<style id=""\/>/m
+         desc = $1.gsub(/<a[^>]*>/, $link_highlight_start).gsub("</a>", $link_highlight_end)
+         line = line.sub(/<style id="roomDesc"\/>.*?<style id=""\/>/m, "\034GSH\r\n#{desc}\034GSI\r\n")
+      end
+      line = line.gsub("</prompt>\r\n", "</prompt>")
+      line = line.gsub("<pushBold/>", "\034GSL\r\n")
+      line = line.gsub("<popBold/>", "\034GSM\r\n")
+      line = line.gsub(/<pushStream id=["'](?:spellfront|inv|bounty|society|speech|talk)["'][^>]*\/>.*?<popStream[^>]*>/m, '')
+      line = line.gsub(/<stream id="Spells">.*?<\/stream>/m, '')
+      line = line.gsub(/<(compDef|inv|component|right|left|spell|prompt)[^>]*>.*?<\/\1>/m, '')
+      line = line.gsub(/<[^>]+>/, '')
+      line = line.gsub('&gt;', '>')
+      line = line.gsub('&lt;', '<')
+      return nil if line.gsub("\r\n", '').length < 1
+      return line
+   rescue
+      $_CLIENT_.puts "--- Error: sf_to_wiz: #{$!}"
+      $_CLIENT_.puts '$_SERVERSTRING_: ' + $_SERVERSTRING_.to_s
+   end
+end
+
+def strip_xml(line)
+   return line if line == "\r\n"
+
+   if $strip_xml_multiline
+      $strip_xml_multiline = $strip_xml_multiline + line
+      line = $strip_xml_multiline
+   end
+   if (line.scan(/<pushStream[^>]*\/>/).length > line.scan(/<popStream[^>]*\/>/).length)
+      $strip_xml_multiline = line
+      return nil
+   end
+   $strip_xml_multiline = nil
+
+   line = line.gsub(/<pushStream id=["'](?:spellfront|inv|bounty|society|speech|talk)["'][^>]*\/>.*?<popStream[^>]*>/m, '')
+   line = line.gsub(/<stream id="Spells">.*?<\/stream>/m, '')
+   line = line.gsub(/<(compDef|inv|component|right|left|spell|prompt)[^>]*>.*?<\/\1>/m, '')
+   line = line.gsub(/<[^>]+>/, '')
+   line = line.gsub('&gt;', '>')
+   line = line.gsub('&lt;', '<')
+
+   return nil if line.gsub("\n", '').gsub("\r", '').gsub(' ', '').length < 1
+   return line
+end
+
+def monsterbold_start
+   if $frontend =~ /^(?:wizard|avalon)$/
+      "\034GSL\r\n"
+   elsif $frontend == 'stormfront'
+      '<pushBold/>'
+   elsif $frontend == 'profanity'
+      '<b>'
+   else
+      ''
+   end
+end
+
+def monsterbold_end
+   if $frontend =~ /^(?:wizard|avalon)$/
+      "\034GSM\r\n"
+   elsif $frontend == 'stormfront'
+      '<popBold/>'
+   elsif $frontend == 'profanity'
+      '</b>'
+   else
+      ''
+   end
+end
+
+def do_client(client_string)
+   client_string.strip!
+   client_string = UpstreamHook.run(client_string)
+   return nil if client_string.nil?
+   if client_string =~ /^(?:<c>)?#{$lich_char}(.+)$/
+      cmd = $1
+      if cmd =~ /^k$|^kill$|^stop$/
+         if Script.running.empty?
+            respond '--- Lich: no scripts to kill'
+         else
+            Script.running.last.kill
+         end
+      elsif cmd =~ /^p$|^pause$/
+         if s = Script.running.reverse.find { |s| not s.paused? }
+            s.pause
+         else
+            respond '--- Lich: no scripts to pause'
+         end
+         s = nil
+      elsif cmd =~ /^u$|^unpause$/
+         if s = Script.running.reverse.find { |s| s.paused? }
+            s.unpause
+         else
+            respond '--- Lich: no scripts to unpause'
+         end
+         s = nil
+      elsif cmd =~ /^ka$|^kill\s?all$|^stop\s?all$/
+         did_something = false
+         Script.running.find_all { |s| not s.no_kill_all }.each { |s| s.kill; did_something = true }
+         respond('--- Lich: no scripts to kill') unless did_something
+      elsif cmd =~ /^pa$|^pause\s?all$/
+         did_something = false
+         Script.running.find_all { |s| not s.paused? and not s.no_pause_all }.each { |s| s.pause; did_something  = true }
+         respond('--- Lich: no scripts to pause') unless did_something
+      elsif cmd =~ /^ua$|^unpause\s?all$/
+         did_something = false
+         Script.running.find_all { |s| s.paused? and not s.no_pause_all }.each { |s| s.unpause; did_something = true }
+         respond('--- Lich: no scripts to unpause') unless did_something
+      elsif cmd =~ /^(k|kill|stop|p|pause|u|unpause)\s(.+)/
+         action = $1
+         target = $2
+         script = (Script.running + Script.hidden)
+            .find { |s| s.name == target or s.name.downcase.end_with?(target.downcase) }
+         if script.nil?
+            respond "--- Lich: #{target} does not appear to be running! Use ';list' or ';listall' to see what's active."
+         elsif action =~ /^(?:k|kill|stop)$/
+            script.kill
+         elsif action =~/^(?:p|pause)$/
+            script.pause
+         elsif action =~/^(?:u|unpause)$/
+            script.unpause
+         end
+         action = target = script = nil
+      elsif cmd =~ /^list\s?(?:all)?$|^l(?:a)?$/i
+         if cmd =~ /a(?:ll)?/i
+            list = Script.running + Script.hidden
+         else
+            list = Script.running
+         end
+         if list.empty?
+            respond '--- Lich: no active scripts'
+         else
+            respond "--- Lich: #{list.collect { |s| s.paused? ? "#{s.name} (paused)" : s.name }.join(", ")}"
+         end
+         list = nil
+      elsif cmd =~ /^force\s+[^\s]+/
+         if cmd =~ /^force\s+([^\s]+)\s+(.+)$/
+            Script.start($1, $2, :force => true)
+         elsif cmd =~ /^force\s+([^\s]+)/
+            Script.start($1, :force => true)
+         end
+      elsif cmd =~ /^send |^s /
+         if cmd.split[1] == "to"
+            script = (Script.running + Script.hidden).find { |scr| scr.name == cmd.split[2].chomp.strip } || script = (Script.running + Script.hidden).find { |scr| scr.name =~ /^#{cmd.split[2].chomp.strip}/i }
+            if script
+               msg = cmd.split[3..-1].join(' ').chomp
+               if script.want_downstream
+                  script.downstream_buffer.push(msg)
+               else
+                  script.unique_buffer.push(msg)
+               end
+               respond "--- sent to '#{script.name}': #{msg}"
+            else
+               respond "--- Lich: '#{cmd.split[2].chomp.strip}' does not match any active script!"
+            end
+            script = nil
+         else
+            if Script.running.empty? and Script.hidden.empty?
+               respond('--- Lich: no active scripts to send to.')
+            else
+               msg = cmd.split[1..-1].join(' ').chomp
+               respond("--- sent: #{msg}")
+               Script.new_downstream(msg)
+            end
+         end
+      elsif cmd =~ /^(?:exec|e)(q)? (.+)$/
+         cmd_data = $2
+         if $1.nil?
+            ExecScript.start(cmd_data, flags={ :quiet => false, :trusted => true })
+         else
+            ExecScript.start(cmd_data, flags={ :quiet => true, :trusted => true })
+         end
+      elsif cmd =~ /^trust\s+(.*)/i
+         script_name = $1
+         if RUBY_VERSION =~ /^2\.[012]\./
+            if File.exists?("#{SCRIPT_DIR}/#{script_name}.lic")
+               if Script.trust(script_name)
+                  respond "--- Lich: '#{script_name}' is now a trusted script."
+               else
+                  respond "--- Lich: '#{script_name}' is already trusted."
+               end
+            else
+               respond "--- Lich: could not find script: #{script_name}"
+            end
+         else
+            respond "--- Lich: this feature isn't available in this version of Ruby "
+         end
+      elsif cmd =~ /^(?:dis|un)trust\s+(.*)/i
+         script_name = $1
+         if RUBY_VERSION =~ /^2\.[012]\./
+            if Script.distrust(script_name)
+               respond "--- Lich: '#{script_name}' is no longer a trusted script."
+            else
+               respond "--- Lich: '#{script_name}' was not found in the trusted script list."
+            end
+         else
+            respond "--- Lich: this feature isn't available in this version of Ruby "
+         end
+      elsif cmd =~ /^list\s?(?:un)?trust(?:ed)?$|^lt$/i
+         if RUBY_VERSION =~ /^2\.[012]\./
+            list = Script.list_trusted
+            if list.empty?
+               respond "--- Lich: no scripts are trusted"
+            else
+               respond "--- Lich: trusted scripts: #{list.join(', ')}"
+            end
+            list = nil
+         else
+            respond "--- Lich: this feature isn't available in this version of Ruby "
+         end
+      elsif cmd =~ /^help$/i
+         respond
+         respond "Lich v#{LICH_VERSION}"
+         respond
+         respond 'built-in commands:'
+         respond "   #{$clean_lich_char}<script name>             start a script"
+         respond "   #{$clean_lich_char}force <script name>       start a script even if it's already running"
+         respond "   #{$clean_lich_char}pause <script name>       pause a script"
+         respond "   #{$clean_lich_char}p <script name>           ''"
+         respond "   #{$clean_lich_char}unpause <script name>     unpause a script"
+         respond "   #{$clean_lich_char}u <script name>           ''"
+         respond "   #{$clean_lich_char}kill <script name>        kill a script"
+         respond "   #{$clean_lich_char}k <script name>           ''"
+         respond "   #{$clean_lich_char}pause                     pause the most recently started script that isn't aready paused"
+         respond "   #{$clean_lich_char}p                         ''"
+         respond "   #{$clean_lich_char}unpause                   unpause the most recently started script that is paused"
+         respond "   #{$clean_lich_char}u                         ''"
+         respond "   #{$clean_lich_char}kill                      kill the most recently started script"
+         respond "   #{$clean_lich_char}k                         ''"
+         respond "   #{$clean_lich_char}list                      show running scripts (except hidden ones)"
+         respond "   #{$clean_lich_char}l                         ''"
+         respond "   #{$clean_lich_char}pause all                 pause all scripts"
+         respond "   #{$clean_lich_char}pa                        ''"
+         respond "   #{$clean_lich_char}unpause all               unpause all scripts"
+         respond "   #{$clean_lich_char}ua                        ''"
+         respond "   #{$clean_lich_char}kill all                  kill all scripts"
+         respond "   #{$clean_lich_char}ka                        ''"
+         respond "   #{$clean_lich_char}list all                  show all running scripts"
+         respond "   #{$clean_lich_char}la                        ''"
+         respond
+         respond "   #{$clean_lich_char}exec <code>               executes the code as if it was in a script"
+         respond "   #{$clean_lich_char}e <code>                  ''"
+         respond "   #{$clean_lich_char}execq <code>              same as #{$clean_lich_char}exec but without the script active and exited messages"
+         respond "   #{$clean_lich_char}eq <code>                 ''"
+         respond
+         if (RUBY_VERSION =~ /^2\.[012]\./)
+            respond "   #{$clean_lich_char}trust <script name>       let the script do whatever it wants"
+            respond "   #{$clean_lich_char}distrust <script name>    restrict the script from doing things that might harm your computer"
+            respond "   #{$clean_lich_char}list trusted              show what scripts are trusted"
+            respond "   #{$clean_lich_char}lt                        ''"
+            respond
+         end
+         respond "   #{$clean_lich_char}send <line>               send a line to all scripts as if it came from the game"
+         respond "   #{$clean_lich_char}send to <script> <line>   send a line to a specific script"
+         respond
+         respond 'If you liked this help message, you might also enjoy:'
+         respond "   #{$clean_lich_char}lnet help"
+         respond "   #{$clean_lich_char}magic help     (infomon must be running)"
+         respond "   #{$clean_lich_char}go2 help"
+         respond "   #{$clean_lich_char}repository help"
+         respond "   #{$clean_lich_char}alias help"
+         respond "   #{$clean_lich_char}vars help"
+         respond "   #{$clean_lich_char}autostart help"
+         respond
+      else
+         if cmd =~ /^([^\s]+)\s+(.+)/
+            Script.start($1, $2)
+         else
+            Script.start(cmd)
+         end
+      end
+   else
+      if $offline_mode
+         respond "--- Lich: offline mode: ignoring #{client_string}"
+      else
+         client_string = "#{$cmd_prefix}bbs" if ($frontend =~ /^(?:wizard|avalon)$/) and (client_string == "#{$cmd_prefix}\egbbk\n") # launch forum
+         Game._puts client_string
+      end
+      $_CLIENTBUFFER_.push client_string
+   end
+   Script.new_upstream(client_string)
+end
+
+def report_errors(&block)
+   begin
+      block.call
+   rescue
+      respond "--- Lich: error: #{$!}\n\t#{$!.backtrace[0..1].join("\n\t")}"
+      Lich.log "error: #{$!}\n\t#{$!.backtrace.join("\n\t")}"
+   rescue SyntaxError
+      respond "--- Lich: error: #{$!}\n\t#{$!.backtrace[0..1].join("\n\t")}"
+      Lich.log "error: #{$!}\n\t#{$!.backtrace.join("\n\t")}"
+   rescue SystemExit
+      nil
+   rescue SecurityError
+      respond "--- Lich: error: #{$!}\n\t#{$!.backtrace[0..1].join("\n\t")}"
+      Lich.log "error: #{$!}\n\t#{$!.backtrace.join("\n\t")}"
+   rescue ThreadError
+      respond "--- Lich: error: #{$!}\n\t#{$!.backtrace[0..1].join("\n\t")}"
+      Lich.log "error: #{$!}\n\t#{$!.backtrace.join("\n\t")}"
+   rescue SystemStackError
+      respond "--- Lich: error: #{$!}\n\t#{$!.backtrace[0..1].join("\n\t")}"
+      Lich.log "error: #{$!}\n\t#{$!.backtrace.join("\n\t")}"
+   rescue Exception
+      respond "--- Lich: error: #{$!}\n\t#{$!.backtrace[0..1].join("\n\t")}"
+      Lich.log "error: #{$!}\n\t#{$!.backtrace.join("\n\t")}"
+   rescue ScriptError
+      respond "--- Lich: error: #{$!}\n\t#{$!.backtrace[0..1].join("\n\t")}"
+      Lich.log "error: #{$!}\n\t#{$!.backtrace.join("\n\t")}"
+   rescue LoadError
+      respond "--- Lich: error: #{$!}\n\t#{$!.backtrace[0..1].join("\n\t")}"
+      Lich.log "error: #{$!}\n\t#{$!.backtrace.join("\n\t")}"
+   rescue NoMemoryError
+      respond "--- Lich: error: #{$!}\n\t#{$!.backtrace[0..1].join("\n\t")}"
+      Lich.log "error: #{$!}\n\t#{$!.backtrace.join("\n\t")}"
+   rescue
+      respond "--- Lich: error: #{$!}\n\t#{$!.backtrace[0..1].join("\n\t")}"
+      Lich.log "error: #{$!}\n\t#{$!.backtrace.join("\n\t")}"
+   end
+end
+
+def before_dying(&code)
+   Script.at_exit(&code)
 end

@@ -8,7 +8,7 @@ class Script < Thread
   @@lock_holder      ||= nil
 
   Script.abort_on_exception  = false
-  Thread.report_on_exception = false
+  Script.report_on_exception = false
 
   def self.running(); @@running.dup; end
   def self.list(); Script.running(); end
@@ -305,6 +305,10 @@ class Script < Thread
 
   def dispose()
     super
+  end
+
+  def inspect
+    "%s<%s>" % [self.class.name, @name]
   end
 
   def kill()

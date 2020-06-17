@@ -8,4 +8,7 @@ module CharSettings
    def CharSettings.to_hash
       Settings.to_hash("#{XMLData.game}:#{XMLData.name}")
    end
+   def CharSettings.save()
+      Settings.save()
+   end
 end

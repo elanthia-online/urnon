@@ -780,3 +780,36 @@ class Map
      end
   end
 end
+
+class Map
+   def desc
+      @description
+   end
+   def map_name
+      @image
+   end
+   def map_x
+      if @image_coords.nil?
+         nil
+      else
+         ((image_coords[0] + image_coords[2])/2.0).round
+      end
+   end
+   def map_y
+      if @image_coords.nil?
+         nil
+      else
+         ((image_coords[1] + image_coords[3])/2.0).round
+      end
+   end
+   def map_roomsize
+      if @image_coords.nil?
+         nil
+      else
+         image_coords[2] - image_coords[0]
+      end
+   end
+   def geo
+      nil
+   end
+end
