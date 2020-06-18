@@ -97,6 +97,7 @@ require_relative("./lib/aliases.rb")
 require_relative("./lib/opts.rb")
 require_relative("./lib/game-portal")
 require_relative("./lib/spell-song")
+require_relative("./lib/duplicate-defs")
 # legacy top-level include
 include Games::Gemstone
 
@@ -152,7 +153,6 @@ Game._puts(client_string)
   Game._puts("<c>")
 }
 $login_time = Time.now
-
 
 detachable_client_thread = Thread.new {
     loop {
