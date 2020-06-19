@@ -595,7 +595,7 @@ def wait_while(announce=nil, timeout: nil)
    ttl = timeout.nil? ? false : Time.now + timeout
    begin
       Thread.current.priority = 0
-      respond(announce) unless announce.nil? or not yield
+      respond("#{Script.current.name}:#{announce}") unless announce.nil? or not yield
       while yield
          sleep 0.25
          return :timeout if ttl && Time.now > ttl
@@ -2165,6 +2165,7 @@ end
 
 def do_client(client_string)
    client_string.strip!
+   return Game.close() if client_string == "<c>exit"
    client_string = UpstreamHook.run(client_string)
    return nil if client_string.nil?
    if client_string =~ /^(?:<c>)?#{$lich_char}(.+)$/
@@ -2265,44 +2266,6 @@ def do_client(client_string)
          else
             ExecScript.start(cmd_data, flags={ :quiet => true, :trusted => true })
          end
-      elsif cmd =~ /^trust\s+(.*)/i
-         script_name = $1
-         if RUBY_VERSION =~ /^2\.[012]\./
-            if File.exists?("#{SCRIPT_DIR}/#{script_name}.lic")
-               if Script.trust(script_name)
-                  respond "--- Lich: '#{script_name}' is now a trusted script."
-               else
-                  respond "--- Lich: '#{script_name}' is already trusted."
-               end
-            else
-               respond "--- Lich: could not find script: #{script_name}"
-            end
-         else
-            respond "--- Lich: this feature isn't available in this version of Ruby "
-         end
-      elsif cmd =~ /^(?:dis|un)trust\s+(.*)/i
-         script_name = $1
-         if RUBY_VERSION =~ /^2\.[012]\./
-            if Script.distrust(script_name)
-               respond "--- Lich: '#{script_name}' is no longer a trusted script."
-            else
-               respond "--- Lich: '#{script_name}' was not found in the trusted script list."
-            end
-         else
-            respond "--- Lich: this feature isn't available in this version of Ruby "
-         end
-      elsif cmd =~ /^list\s?(?:un)?trust(?:ed)?$|^lt$/i
-         if RUBY_VERSION =~ /^2\.[012]\./
-            list = Script.list_trusted
-            if list.empty?
-               respond "--- Lich: no scripts are trusted"
-            else
-               respond "--- Lich: trusted scripts: #{list.join(', ')}"
-            end
-            list = nil
-         else
-            respond "--- Lich: this feature isn't available in this version of Ruby "
-         end
       elsif cmd =~ /^help$/i
          respond
          respond "Lich v#{LICH_VERSION}"
@@ -2337,14 +2300,6 @@ def do_client(client_string)
          respond "   #{$clean_lich_char}e <code>                  ''"
          respond "   #{$clean_lich_char}execq <code>              same as #{$clean_lich_char}exec but without the script active and exited messages"
          respond "   #{$clean_lich_char}eq <code>                 ''"
-         respond
-         if (RUBY_VERSION =~ /^2\.[012]\./)
-            respond "   #{$clean_lich_char}trust <script name>       let the script do whatever it wants"
-            respond "   #{$clean_lich_char}distrust <script name>    restrict the script from doing things that might harm your computer"
-            respond "   #{$clean_lich_char}list trusted              show what scripts are trusted"
-            respond "   #{$clean_lich_char}lt                        ''"
-            respond
-         end
          respond "   #{$clean_lich_char}send <line>               send a line to all scripts as if it came from the game"
          respond "   #{$clean_lich_char}send to <script> <line>   send a line to a specific script"
          respond

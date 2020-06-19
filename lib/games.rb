@@ -8,6 +8,7 @@ module Games
         @@buffer    = SharedBuffer.new
         @@_buffer   = SharedBuffer.new
         @@_buffer.max_size = 1000
+        
         def Game.open(host, port)
            @@socket = TCPSocket.open(host, port)
            begin
@@ -19,7 +20,7 @@ module Games
            end
            @@socket.sync = true
            # heart-beat check for the game socket
-           Thread.new {
+           @@heartbeat = Thread.new {
               @@last_recv = Time.now
               loop {
                  if (@@last_recv + 300) < Time.now
@@ -121,27 +122,30 @@ module Games
            @@thread.priority = 4
            $_SERVER_ = @@socket # deprecated
         end
+
         def Game.thread
            @@thread
         end
-        def Game.closed?
-           if @@socket.nil?
-              true
-           else
-              @@socket.closed?
-           end
+
+        def Game.sock()
+         @@socket
         end
+
+        def Game.closed?
+           @@socket.nil? or @@socket.closed?
+        end
+        
         def Game.close
            if @@socket
               @@socket.close rescue nil
               @@thread.kill rescue nil
            end
         end
+        
         def Game._puts(str)
-           @@mutex.synchronize {
-              @@socket.puts(str)
-           }
+           @@mutex.synchronize { @@socket.puts(str) }
         end
+
         def Game.puts(str)
            $_SCRIPTIDLETIMESTAMP_ = Time.now
            if script = Script.current
@@ -156,15 +160,19 @@ module Games
            Game._puts "#{$cmd_prefix}#{str}"
            $_LASTUPSTREAM_ = "[#{script_name}]#{$SEND_CHARACTER}#{str}"
         end
+
         def Game.gets
            @@buffer.gets
         end
+        
         def Game.buffer
            @@buffer
         end
+        
         def Game._gets
            @@_buffer.gets
         end
+        
         def Game._buffer
            @@_buffer
         end
