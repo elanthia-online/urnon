@@ -100,6 +100,11 @@ require_relative("./lib/spell-song")
 require_relative("./lib/duplicate-defs")
 # legacy top-level include
 include Games::Gemstone
+#
+# new utils
+#
+# - lich script inter-dependency manager
+require_relative("./lib/package")
 
 XMLData      = XMLParser.new
 LICH_DIR   ||= File.dirname(File.expand_path($PROGRAM_NAME))
@@ -118,6 +123,8 @@ argv.port      or fail Exception, "--port= is required"
 argv.password  or fail Exception, "--password= is required"
 argv.account   or fail Exception, "--account= is required"
 argv.character or fail Exception, "--character= is required"
+
+PORT = argv.port
 
 game_key = EAccess.auth(
   account: argv.account, 
@@ -157,7 +164,7 @@ $login_time = Time.now
 detachable_client_thread = Thread.new {
     loop {
       begin
-          server = TCPServer.new('127.0.0.1', argv.port)
+          server = TCPServer.new('127.0.0.1', PORT)
           $_DETACHABLE_CLIENT_ = SynchronizedSocket.new(server.accept)
           $_DETACHABLE_CLIENT_.sync = true
       rescue
