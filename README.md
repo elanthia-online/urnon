@@ -22,3 +22,37 @@ My previous attempts at a complete rewrite have been seriously hampered by MapDB
 6. significantly fewer tight loops
 7. `wait_while` accepts a `timeout:` keyword
 8. `wait_until` accepts a `timeout:` keyword
+9. `;autostart` can optionally use `YAML` to spin up supervisor trees
+
+# Autostart
+
+`;autostart` is brittle for a variety of advanced use cases (like a Supervisor tree), but still supported unless a `autostart/` directory is added to your cabal (lich) folder.
+
+When an `autostart/` directory is present, it instead uses `YAML`.
+
+my `autostart/` dir for example:
+
+```
+autostart/
+├── _global.yaml
+├── ondreian.yaml
+├── pixelia.yaml
+└── szan.yaml
+```
+
+`_global.yaml` is a special file that runs **before** character specific files, it's service-friendly (like Redis).
+
+Example `_global.yaml`:
+
+```yaml
+gems:
+  - Olib
+
+scripts:
+  - services/log
+  - alias
+  - infomon
+  - env
+```
+
+Notice that you can also specify `gems` to require, which happens before any `scripts` are launched!
