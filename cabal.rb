@@ -34,6 +34,8 @@
 #
 # Lich is maintained by Matt Lowe (tillmen@lichproject.org)
 #
+require 'sqlite3'
+
 require 'benchmark'
 require 'time'
 require 'socket'
@@ -43,7 +45,6 @@ require 'stringio'
 require 'zlib'
 require 'resolv'
 require 'digest/md5'
-require 'sqlite3'
 require 'openssl'
 require 'fileutils'
 # lich globals
