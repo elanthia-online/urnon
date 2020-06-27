@@ -36,7 +36,9 @@ class Script < Thread
   end
   
   def self.run(*args)
-     Script.of(args).value
+     s = Script.of(args)
+     s.value
+     return s
   end
 
   def self.script_name(file_name)
@@ -309,6 +311,10 @@ class Script < Thread
 
   def inspect
     "%s<%s>" % [self.class.name, @name]
+  end
+
+  def status()
+   exit_status
   end
 
   def kill()

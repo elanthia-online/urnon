@@ -48,7 +48,7 @@ require 'digest/md5'
 require 'openssl'
 require 'fileutils'
 # lich globals
-LICH_VERSION = '4.6.50'
+LICH_VERSION = '4.6.55'
 TESTING = false
 $VERBOSE = nil
 $link_highlight_start = ''
@@ -62,8 +62,7 @@ $lich_char = Regexp.escape($clean_lich_char)
 # deprecated stuff
 $version = LICH_VERSION
 $room_count = 0
-
-
+Dir.chdir(__dir__)
 require_relative("./lib/lich")
 ## primative extensions to String, etc
 require_relative("./lib/ext")
@@ -106,15 +105,24 @@ include Games::Gemstone
 #
 # - lich script inter-dependency manager
 require_relative("./lib/package")
+require_relative("./lib/client")
 
-XMLData      = XMLParser.new
-LICH_DIR   ||= File.dirname(File.expand_path($PROGRAM_NAME))
-TEMP_DIR   ||= "#{LICH_DIR}/temp"
-DATA_DIR   ||= "#{LICH_DIR}/data"
-SCRIPT_DIR ||= "#{LICH_DIR}/scripts"
-MAP_DIR    ||= "#{LICH_DIR}/maps"
-LOG_DIR    ||= "#{LICH_DIR}/logs"
-BACKUP_DIR ||= "#{LICH_DIR}/backup"
+XMLData    = XMLParser.new
+LICH_DIR   = File.dirname File.expand_path($PROGRAM_NAME)
+TEMP_DIR   = File.join LICH_DIR, "temp"
+DATA_DIR   = File.join LICH_DIR, "data"
+SCRIPT_DIR = File.join LICH_DIR, "scripts"
+MAP_DIR    = File.join LICH_DIR, "maps"
+LOG_DIR    = File.join LICH_DIR, "logs"
+BACKUP_DIR = File.join LICH_DIR, "backup"
+
+$lich_dir   = LICH_DIR + "/"
+$temp_dir   = TEMP_DIR + "/"
+$data_dir   = DATA_DIR + "/"
+$script_dir = SCRIPT_DIR + "/"
+$map_dir    = MAP_DIR + "/"
+$log_dir    = LOG_DIR + "/"
+$backup_dir = BACKUP_DIR + "/"
 
 [TEMP_DIR, DATA_DIR, SCRIPT_DIR, MAP_DIR, LOG_DIR, BACKUP_DIR].each do |dir| FileUtils.mkdir_p(dir) end
 Lich.init_db

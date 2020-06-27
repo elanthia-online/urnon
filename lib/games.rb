@@ -107,7 +107,8 @@ module Games
                        Lich.log "error: server_thread: #{$!}\n\t#{$!.backtrace.join("\n\t")}"
                     end
                  end
-              rescue Exception
+              rescue Exception => e
+                 Log.out(e, lable: :game_error)
                  Lich.log "error: server_thread: #{$!}\n\t#{$!.backtrace.join("\n\t")}"
                  $stdout.puts "--- error: server_thread: #{$!}"
                  sleep 0.2
@@ -139,6 +140,7 @@ module Games
            if @@socket
               @@socket.close rescue nil
               @@thread.kill rescue nil
+              @@heartbeat.kill rescue nil
            end
         end
         
