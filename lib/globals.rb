@@ -601,7 +601,7 @@ def wait_while(announce=nil, timeout: nil)
          return :timeout if ttl && Time.now > ttl
       end
    rescue Exception => exception
-      pp exception
+      respond exception
    ensure
       Thread.current.priority = priosave   
    end
@@ -2207,4 +2207,14 @@ end
 
 def before_dying(&code)
    Script.at_exit(&code)
+end
+
+def force_start_script(script_name,cli_vars=[], flags={})
+   flags = Hash.new unless flags.class == Hash
+   flags[:force] = true
+   Script.start(script_name,cli_vars.join(" "),flags)
+end
+
+def start_script(*args)
+   Script.start(*args)
 end

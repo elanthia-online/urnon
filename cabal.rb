@@ -128,16 +128,17 @@ $backup_dir = BACKUP_DIR + "/"
 Lich.init_db
 
 argv = Opts.parse(ARGV)
-argv.port      or fail Exception, "--port= is required"
-argv.password  or fail Exception, "--password= is required"
-argv.account   or fail Exception, "--account= is required"
-argv.character or fail Exception, "--character= is required"
+argv.port       or fail Exception, "--port= is required"
+argv.character  or fail Exception, "--character= is required"
+# use env variables so they are not in logs
+ENV["PASSWORD"] or fail Exception, "env variable PASSWORD is required"
+ENV["ACCOUNT"]  or fail Exception, "env variable ACCOUNT is required"
 
 PORT = argv.port
 
 game_key = EAccess.auth(
-  account: argv.account, 
-  password: argv.password,
+  account:   ENV["ACCOUNT"], 
+  password:  ENV["PASSWORD"],
   character: argv.character)
 
 $_SERVERBUFFER_ = LimitedArray.new

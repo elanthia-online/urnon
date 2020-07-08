@@ -45,7 +45,8 @@ module Client
           action = $1
           target = $2
           script = (Script.running + Script.hidden)
-            .find { |s| s.name == target or s.name.downcase.end_with?(target.downcase) }
+            .find { |s| s.name.start_with?(target) or s.name.split("/").last.start_with?(target) }
+          
           if script.nil?
             respond "--- Lich: #{target} does not appear to be running! Use ';list' or ';listall' to see what's active."
           elsif action =~ /^(?:k|kill|stop)$/

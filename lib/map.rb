@@ -1,3 +1,5 @@
+require "json"
+
 class Map
    @@loaded                   = false
    @@load_mutex               = Mutex.new

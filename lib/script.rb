@@ -3,6 +3,7 @@ require "benchmark"
 SCRIPT_CONTEXT = binding()
 
 class Script < Thread
+  class Pause < Exception;end;
   GLOBAL_SCRIPT_LOCK ||= Mutex.new
   @@running          ||= Array.new
   @@lock_holder      ||= nil
@@ -202,7 +203,9 @@ class Script < Thread
 
     opts[:name] = Script.script_name opts[:file]
 
-    if Script.running.find { |s| s.name.eql?(opts[:name]) } 
+    #Log.out(opts, label: %i(script of))
+
+    if Script.running.find { |s| s.name.eql?(opts[:name]) } and not opts[:force]
       return respond "--- lich: #{opts[:name]} is already running" 
     end
 
@@ -218,7 +221,7 @@ class Script < Thread
               :file_name, :at_exit_procs,
               :thread_group
 
-  attr_accessor :quiet, :no_echo, :hidden, :paused, :silent,
+  attr_accessor :quiet, :no_echo, :hidden, :silent,
                 :want_downstream, :want_downstream_xml, :want_upstream, :want_script_output, 
                 :no_pause_all, :no_kill_all, 
                 :downstream_buffer, :upstream_buffer, :unique_buffer, 
@@ -254,7 +257,6 @@ class Script < Thread
    @watchfor = Hash.new
    @at_exit_procs = Array.new
    @die_with = Array.new
-   @paused = false
    @hidden = false
    @no_pause_all = false
    @no_kill_all = false
@@ -275,6 +277,9 @@ class Script < Thread
           respond("--- lich: #{self.name} active.") unless self.quiet
           yield(self)
           self.exit_status = 0
+        rescue Pause
+          Thread.stop
+          next
         rescue Exception => e
           respond e
           respond e.backtrace
@@ -314,13 +319,14 @@ class Script < Thread
   end
 
   def status()
-   exit_status
+    return super if alive?
+    return exit_status
   end
 
   def kill()
     begin
       return unless @@running.include?(self)
-      @paused = false
+      
       (@thread_group.list + self.child_threads).each {|child| child.kill unless child.is_a?(Script) }
       @die_with.each { |script_name| Script.unsafe_kill(script_name) }
       @at_exit_procs.each { |p| report_errors { p.call } }
@@ -376,16 +382,16 @@ class Script < Thread
 
   def pause
      respond "--- lich: #{@name} paused."
-     @paused = true
+     self.raise Pause.new
   end
 
   def unpause
      respond "--- lich: #{@name} unpaused."
-     @paused = false
+     self.run if status == "sleep"
   end
 
   def paused?
-     @paused
+    status == "sleep"
   end
 
   def clear

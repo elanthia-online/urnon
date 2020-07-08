@@ -462,7 +462,7 @@ module Games
         until (@@cast_lock.first == script) or @@cast_lock.empty?
             sleep 0.1
             Script.current # allows this loop to be paused
-            @@cast_lock.delete_if { |s| s.paused or not Script.list.include?(s) }
+            @@cast_lock.delete_if { |s| s.paused? or not Script.list.include?(s) }
         end
       end
       def Spell.unlock_cast
@@ -500,7 +500,7 @@ module Games
             until (@@cast_lock.first == script) or @@cast_lock.empty?
               sleep 0.1
               Script.current # allows this loop to be paused
-              @@cast_lock.delete_if { |s| s.paused or not Script.list.include?(s) }
+              @@cast_lock.delete_if { |s| s.paused? or not Script.list.include?(s) }
             end
             unless (self.mana_cost <= 0) or checkmana(self.mana_cost)
               echo 'cast: not enough mana'
