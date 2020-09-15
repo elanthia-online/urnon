@@ -463,6 +463,8 @@ def move(dir='none', giveup_seconds=30, giveup_lines=30)
             empty_hands
          end
          put_dir.call
+      elsif line =~ /is unable to follow you\.$/
+         return nil
       elsif line == 'You are too injured to be doing any climbing!'
          if (resolve = Spell[9704]) and resolve.known?
             wait_until { resolve.affordable? }
@@ -1447,10 +1449,9 @@ def matchfindword(*strings)
 end
 
 def send_scripts(*messages)
+   Script.current
    messages.flatten!
-   messages.each { |message|
-      Script.new_downstream(message)
-   }
+   messages.each { |message| Script.new_downstream(message) }
    true
 end
 
@@ -1474,6 +1475,7 @@ def status_tags(onoff="none")
 end
 
 def respond(first = "", *messages)
+   Script.current
    str = ''
    begin
       if first.class == Array
@@ -1500,6 +1502,7 @@ def respond(first = "", *messages)
 end
 
 def _respond(first = "", *messages)
+   Script.current
    str = ''
    begin
       if first.class == Array
@@ -1927,7 +1930,7 @@ def fill_left_hand
    end
 end
 
-def dothis (action, success_line)
+def dothis(action, success_line)
    loop {
       Script.current.clear
       put action
@@ -1984,7 +1987,7 @@ def dothis (action, success_line)
    }
 end
 
-def dothistimeout (action, timeout, success_line)
+def dothistimeout(action, timeout, success_line)
    end_time = Time.now.to_f + timeout
    line = nil
    loop {
@@ -2050,7 +2053,6 @@ def dothistimeout (action, timeout, success_line)
       }
    }
 end
-
 
 def sf_to_wiz(line)
    begin

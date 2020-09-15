@@ -8,7 +8,7 @@ module EAccess
   def self.download_pem()
     conn = self.socket()
     File.write(EAccess::PEM, conn.peer_cert)
-    # pp "wrote peer certificate to %s" % PEM
+    pp "wrote peer certificate to %s" % PEM
   end
 
   def self.verify_pem(conn)
@@ -37,7 +37,7 @@ module EAccess
     EAccess.verify_pem(conn)
     conn.puts "K\n"
     hashkey = EAccess.read(conn)
-    # pp "hash=%s" % hashkey
+    #pp "hash=%s" % hashkey
     password = password.split('').map { |c| c.getbyte(0) }
     hashkey = hashkey.split('').map { |c| c.getbyte(0) }
     password.each_index { |i| password[i] = ((password[i]-32)^hashkey[i])+32 }
@@ -45,24 +45,24 @@ module EAccess
     conn.puts "A\t#{account}\t#{password}\n"
     response = EAccess.read(conn)
     fail Exception, "Error(%s)" % response.split(/\s+/).last unless login = /KEY\t(?<key>.*)\t/.match(response)
-    # pp "response=%s" % response
+    #pp "A:response=%s" % response
     conn.puts "M\n"
     response = EAccess.read(conn)
     fail Exception, response unless response =~ /^M\t/
-    # pp "response=%s" % response
+    #pp "M:response=%s" % response
     conn.puts "F\t#{game_code}\n"
     response = EAccess.read(conn)
     fail Exception, response unless response =~ /NORMAL|PREMIUM|TRIAL|INTERNAL|FREE/
-    # pp "response=%s" % response
+    #pp "F:response=%s" % response
     conn.puts "G\t#{game_code}\n"
     EAccess.read(conn)
-    # pp "response=%s" % response
+    #pp "G:response=%s" % response
     conn.puts "P\t#{game_code}\n"
     EAccess.read(conn)
-    # pp "response=%s" % response
+    #pp "P:response=%s" % response
     conn.puts "C\n"
     response = EAccess.read(conn)
-    # pp "response=%s" % response
+    #pp "C:response=%s" % response
     char_code = response.sub(/^C\t[0-9]+\t[0-9]+\t[0-9]+\t[0-9]+[\t\n]/, '')
       .scan(/[^\t]+\t[^\t^\n]+/)
       .find { |c| c.split("\t")[1] == character }
@@ -70,9 +70,15 @@ module EAccess
     conn.puts "L\t#{char_code}\tSTORM\n"
     response = EAccess.read(conn)
     fail Exception, response unless response =~ /^L\t/
+    #pp "L:response=%s" % response
     conn.close unless conn.closed?
-    response.sub(/^L\tOK\t/, '').split("\t")
-    login[:key]
+    login_info = Hash[response.sub(/^L\tOK\t/, '')
+      .split("\t")
+      .map {|kv| 
+        k,v = kv.split("=")
+        [k.downcase, v]
+      }]
+    return login_info
   end
 
   def self.read(conn)

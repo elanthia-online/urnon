@@ -34,8 +34,9 @@
 #
 # Lich is maintained by Matt Lowe (tillmen@lichproject.org)
 #
+$0 = "cabal"
+$stdout.sync = true
 require 'sqlite3'
-
 require 'benchmark'
 require 'time'
 require 'socket'
@@ -63,6 +64,7 @@ $lich_char = Regexp.escape($clean_lich_char)
 $version = LICH_VERSION
 $room_count = 0
 Dir.chdir(__dir__)
+module Cabal; end
 require_relative("./lib/lich")
 ## primative extensions to String, etc
 require_relative("./lib/ext")
@@ -98,6 +100,7 @@ require_relative("./lib/opts.rb")
 require_relative("./lib/game-portal")
 require_relative("./lib/spell-song")
 require_relative("./lib/duplicate-defs")
+require_relative("./lib/gtk2")
 # legacy top-level include
 include Games::Gemstone
 #
@@ -106,6 +109,7 @@ include Games::Gemstone
 # - lich script inter-dependency manager
 require_relative("./lib/package")
 require_relative("./lib/client")
+require_relative("./lib/xdg")
 
 XMLData    = XMLParser.new
 LICH_DIR   = File.dirname File.expand_path($PROGRAM_NAME)
@@ -124,21 +128,27 @@ $map_dir    = MAP_DIR + "/"
 $log_dir    = LOG_DIR + "/"
 $backup_dir = BACKUP_DIR + "/"
 
-[TEMP_DIR, DATA_DIR, SCRIPT_DIR, MAP_DIR, LOG_DIR, BACKUP_DIR].each do |dir| FileUtils.mkdir_p(dir) end
+[TEMP_DIR, DATA_DIR, SCRIPT_DIR, MAP_DIR, LOG_DIR, BACKUP_DIR].each do |dir| 
+  FileUtils.mkdir_p(dir) 
+end
 Lich.init_db
 
 argv = Opts.parse(ARGV)
-argv.port       or fail Exception, "--port= is required"
 argv.character  or fail Exception, "--character= is required"
+argv = OpenStruct.new Cabal::XDG.accounts
+  .fetch(argv.character.capitalize, {})
+  .merge(argv.to_h)
+
 # use env variables so they are not in logs
-ENV["PASSWORD"] or fail Exception, "env variable PASSWORD is required"
-ENV["ACCOUNT"]  or fail Exception, "env variable ACCOUNT is required"
+ENV["PASSWORD"] or argv.password or fail Exception, "env variable PASSWORD is required"
+ENV["ACCOUNT"]  or argv.account or fail Exception, "env variable ACCOUNT is required"
 
-PORT = argv.port
+PORT = (argv.port || 0).to_i
 
-game_key = EAccess.auth(
-  account:   ENV["ACCOUNT"], 
-  password:  ENV["PASSWORD"],
+login_info = EAccess.auth(
+  account:   ENV["ACCOUNT"] || argv.account, 
+  password:  ENV["PASSWORD"] || argv.password,
+  game_code: (argv.game || "GS3"),
   character: argv.character)
 
 $_SERVERBUFFER_ = LimitedArray.new
@@ -148,13 +158,11 @@ $_CLIENTBUFFER_.max_size = 100
 #
 # connect to GSIV only for right now
 #
-Game.open(
-  argv["game-host"] || 'storm.gs4.game.play.net', 
-  argv["game-port"] || 10024)
+Game.open(login_info["gamehost"], login_info["gameport"])
 #
 # send the login key
 #
-Game._puts(game_key + "\n")
+Game._puts(login_info["key"] + "\n")
 #
 # send version string
 #
@@ -170,13 +178,17 @@ Game._puts(client_string)
   Game._puts("<c>")
 }
 $login_time = Time.now
-
 detachable_client_thread = Thread.new {
     loop {
       begin
-          server = TCPServer.new('127.0.0.1', PORT)
-          $_DETACHABLE_CLIENT_ = SynchronizedSocket.new(server.accept)
-          $_DETACHABLE_CLIENT_.sync = true
+        server = TCPServer.new('127.0.0.1', PORT)
+        port = server.addr[1]
+        PORT = port if PORT == 0
+        $0 = "cabal character=%s port=%s" % [argv.character, port]
+        $stdout.write("/cabal UP %s\n" % 
+          {character: argv.character, port: port}.to_json)
+        $_DETACHABLE_CLIENT_ = SynchronizedSocket.new(server.accept)
+        $_DETACHABLE_CLIENT_.sync = true
       rescue
           Lich.log "#{$!}\n\t#{$!.backtrace.join("\n\t")}"
           server.close rescue nil
@@ -197,7 +209,7 @@ detachable_client_thread = Thread.new {
                 init_str.concat "<progressBar id='spirit' value='0' text='spirit #{XMLData.spirit}/#{XMLData.max_spirit}'/>"
                 init_str.concat "<progressBar id='stamina' value='0' text='stamina #{XMLData.stamina}/#{XMLData.max_stamina}'/>"
                 init_str.concat "<progressBar id='encumlevel' value='#{XMLData.encumbrance_value}' text='#{XMLData.encumbrance_text}'/>"
-                init_str.concat "<progressBar id='pbarStance' value='#{XMLData.stance_value}'/>"
+                init_str.concat "<progressBar id='pbarStance' text='stance #{XMLData.stance_text}' value='#{XMLData.stance_value}'/>"
                 init_str.concat "<progressBar id='mindState' value='#{XMLData.mind_value}' text='#{XMLData.mind_text}'/>"
                 init_str.concat "<spell>#{XMLData.prepared_spell}</spell>"
                 init_str.concat "<right>#{GameObj.right_hand.name}</right>"
@@ -246,18 +258,14 @@ detachable_client_thread = Thread.new {
       sleep 0.1
     }
 }
-
+Process.daemon() if argv.daemon
 wait_until {Game.closed?}
 detachable_client_thread.kill rescue nil
 
-Lich.log 'info: stopping scripts...'
 Script.running.each { |script| script.kill }
 Script.hidden.each { |script| script.kill }
 200.times { sleep 0.1; break if Script.running.empty? and Script.hidden.empty? }
-Lich.log 'info: saving script settings...'
 Settings.save
 Vars.save
-Lich.log 'info: closing connections...'
 Game.close
 $_CLIENT_.close rescue nil
-Lich.log "info: exiting..."

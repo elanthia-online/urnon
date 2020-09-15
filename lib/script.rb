@@ -25,7 +25,8 @@ class Script < Thread
     script = running.find {|script| script.eql?(Thread.current) }
     # else check if was launched by a script
     script = running.find {|script| script.eql?(Thread.current.parent) } if script.nil?
-    return script if script.nil?
+    return nil if script.nil?
+    sleep 0.1 while script.paused?
     return script unless block_given?
     yield script
   end
@@ -221,8 +222,10 @@ class Script < Thread
               :file_name, :at_exit_procs,
               :thread_group
 
-  attr_accessor :quiet, :no_echo, :hidden, :silent,
-                :want_downstream, :want_downstream_xml, :want_upstream, :want_script_output, 
+  attr_accessor :quiet, :no_echo, :paused,
+                :hidden, :silent,
+                :want_downstream, :want_downstream_xml, 
+                :want_upstream, :want_script_output, 
                 :no_pause_all, :no_kill_all, 
                 :downstream_buffer, :upstream_buffer, :unique_buffer, 
                 :die_with, :watchfor, :command_line, :ignore_pause,
@@ -262,6 +265,7 @@ class Script < Thread
    @no_kill_all = false
    @silent = false
    @safe = false
+   @paused = false
    @no_echo = false
    @thread_group = ThreadGroup.new
    @start_time = Time.now.to_i
@@ -382,16 +386,16 @@ class Script < Thread
 
   def pause
      respond "--- lich: #{@name} paused."
-     self.raise Pause.new
+     @paused = true
   end
 
   def unpause
      respond "--- lich: #{@name} unpaused."
-     self.run if status == "sleep"
+     @paused = false
   end
 
   def paused?
-    status == "sleep"
+   @paused == true
   end
 
   def clear

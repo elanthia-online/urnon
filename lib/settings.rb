@@ -59,6 +59,10 @@ module Settings
   def Settings.[]=(name, value)
      Settings.get(':')[name] = value
   end
+
+  def Settings.load()
+   # noop
+  end
   
   def Settings.to_hash(scope=':')
      Settings.get(scope)
