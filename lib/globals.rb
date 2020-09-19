@@ -1378,6 +1378,7 @@ def fput(message, *waitingfor)
 end
 
 def put(*messages)
+   Script.current
    messages.each { |message| Game.puts(message) }
 end
 
@@ -2218,5 +2219,6 @@ def force_start_script(script_name,cli_vars=[], flags={})
 end
 
 def start_script(*args)
+   Script.current
    Script.start(*args)
 end
