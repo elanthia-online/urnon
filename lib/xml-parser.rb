@@ -46,6 +46,7 @@ class XMLParser
      @current_target_ids = Array.new
 
      @room_count = 0
+     @room_updating = false
      @room_title = String.new
      @room_description = String.new
      @room_exits = Array.new
@@ -83,7 +84,10 @@ class XMLParser
      @injury_mode = 0
 
      @active_spells = Hash.new
+  end
 
+  def updating_room?
+   @room_updating
   end
 
   def reset
@@ -152,6 +156,7 @@ class XMLParser
               unless @room_window_disabled
                  @room_count += 1
                  $room_count += 1
+                 @room_updating = false
               end
            end
            @in_stream = false
@@ -165,6 +170,7 @@ class XMLParser
            @bold = false
         elsif (name == 'streamWindow')
            if (attributes['id'] == 'main') and attributes['subtitle']
+              @room_updating = true
               @room_title = '[' + attributes['subtitle'][3..-1] + ']'
            end
         elsif name == 'style'
@@ -188,6 +194,7 @@ class XMLParser
            elsif attributes['id'] == 'room extra' # DragonRealms
               @room_count += 1
               $room_count += 1
+              @room_updating = false
            # elsif attributes['id'] == 'sprite'
            end
         elsif name == 'clearContainer'
@@ -645,6 +652,7 @@ class XMLParser
            gsl_exits = nil
            @room_count += 1
            $room_count += 1
+           @room_updating = false
         end
         @last_tag = @active_tags.pop
         @last_id = @active_ids.pop
