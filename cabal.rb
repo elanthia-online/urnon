@@ -100,7 +100,7 @@ require_relative("./lib/opts.rb")
 require_relative("./lib/game-portal")
 require_relative("./lib/spell-song")
 require_relative("./lib/duplicate-defs")
-require_relative("./lib/gtk2")
+require_relative("./lib/gtk3")
 # legacy top-level include
 include Games::Gemstone
 #
