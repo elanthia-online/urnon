@@ -100,7 +100,7 @@ require_relative("./lib/opts.rb")
 require_relative("./lib/game-portal")
 require_relative("./lib/spell-song")
 require_relative("./lib/duplicate-defs")
-require_relative("./lib/gtk2")
+require_relative("./lib/gtk3")
 # legacy top-level include
 include Games::Gemstone
 #
@@ -258,6 +258,9 @@ detachable_client_thread = Thread.new {
       sleep 0.1
     }
 }
+
+Thread.current.priority = -10
+Gtk.main
 Process.daemon() if argv.daemon
 wait_until {Game.closed?}
 detachable_client_thread.kill rescue nil
