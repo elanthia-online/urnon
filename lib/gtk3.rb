@@ -1,6 +1,7 @@
 require 'gtk3'
 HAVE_GTK=true
 if defined?(Gtk)
+  pp "Initialized GTK"
   Gdk.module_eval do
     define_deprecated_singleton_method :screen_height, :warn => "Gdk::screen_height is deprecated; use monitor methods instead" do |_self|
       99999
@@ -96,52 +97,53 @@ if defined?(Gtk)
       end
     end
       # Calling Gtk API in a thread other than the main thread may cause random segfaults
-    def Gtk.queue()
+    def Gtk.queue(&block)
+		 pp "Running GTK block"
          GLib::Timeout.add(1) {
             begin
-              yield
+              block.call
             rescue
                respond "error in Gtk.queue: #{$!}"
                puts "error in Gtk.queue: #{$!}\n\t#{$!.backtrace.join("\n\t")}"
                Lich.log "error in Gtk.queue: #{$!}\n\t#{$!.backtrace.join("\n\t")}"
             rescue SyntaxError
                respond "error in Gtk.queue: #{$!}"
-          puts "error in Gtk.queue: #{$!}\n\t#{$!.backtrace.join("\n\t")}"
+			   puts "error in Gtk.queue: #{$!}\n\t#{$!.backtrace.join("\n\t")}"
                Lich.log "error in Gtk.queue: #{$!}\n\t#{$!.backtrace.join("\n\t")}"
             rescue SystemExit
-          puts "error in Gtk.queue: #{$!}\n\t#{$!.backtrace.join("\n\t")}"
+			   puts "error in Gtk.queue: #{$!}\n\t#{$!.backtrace.join("\n\t")}"
                nil
             rescue SecurityError
                respond "error in Gtk.queue: #{$!}"
-          puts "error in Gtk.queue: #{$!}\n\t#{$!.backtrace.join("\n\t")}"
+               puts "error in Gtk.queue: #{$!}\n\t#{$!.backtrace.join("\n\t")}"
                Lich.log "error in Gtk.queue: #{$!}\n\t#{$!.backtrace.join("\n\t")}"
             rescue ThreadError
                respond "error in Gtk.queue: #{$!}"
-          puts "error in Gtk.queue: #{$!}\n\t#{$!.backtrace.join("\n\t")}"
+               puts "error in Gtk.queue: #{$!}\n\t#{$!.backtrace.join("\n\t")}"
                Lich.log "error in Gtk.queue: #{$!}\n\t#{$!.backtrace.join("\n\t")}"
             rescue SystemStackError
                respond "error in Gtk.queue: #{$!}"
-          puts "error in Gtk.queue: #{$!}\n\t#{$!.backtrace.join("\n\t")}"
+               puts "error in Gtk.queue: #{$!}\n\t#{$!.backtrace.join("\n\t")}"
                Lich.log "error in Gtk.queue: #{$!}\n\t#{$!.backtrace.join("\n\t")}"
             rescue Exception
                respond "error in Gtk.queue: #{$!}"
-          puts "error in Gtk.queue: #{$!}\n\t#{$!.backtrace.join("\n\t")}"
+               puts "error in Gtk.queue: #{$!}\n\t#{$!.backtrace.join("\n\t")}"
                Lich.log "error in Gtk.queue: #{$!}\n\t#{$!.backtrace.join("\n\t")}"
             rescue ScriptError
                respond "error in Gtk.queue: #{$!}"
-          puts "error in Gtk.queue: #{$!}\n\t#{$!.backtrace.join("\n\t")}"
+               puts "error in Gtk.queue: #{$!}\n\t#{$!.backtrace.join("\n\t")}"
                Lich.log "error in Gtk.queue: #{$!}\n\t#{$!.backtrace.join("\n\t")}"
             rescue LoadError
                respond "error in Gtk.queue: #{$!}"
-          puts "error in Gtk.queue: #{$!}\n\t#{$!.backtrace.join("\n\t")}"
+               puts "error in Gtk.queue: #{$!}\n\t#{$!.backtrace.join("\n\t")}"
                Lich.log "error in Gtk.queue: #{$!}\n\t#{$!.backtrace.join("\n\t")}"
             rescue NoMemoryError
                respond "error in Gtk.queue: #{$!}"
-          puts "error in Gtk.queue: #{$!}\n\t#{$!.backtrace.join("\n\t")}"
+               puts "error in Gtk.queue: #{$!}\n\t#{$!.backtrace.join("\n\t")}"
                Lich.log "error in Gtk.queue: #{$!}\n\t#{$!.backtrace.join("\n\t")}"
             rescue
                respond "error in Gtk.queue: #{$!}"
-          puts "error in Gtk.queue: #{$!}\n\t#{$!.backtrace.join("\n\t")}"
+               puts "error in Gtk.queue: #{$!}\n\t#{$!.backtrace.join("\n\t")}"
                Lich.log "error in Gtk.queue: #{$!}\n\t#{$!.backtrace.join("\n\t")}"
             end
             false # don't repeat timeout
@@ -149,9 +151,13 @@ if defined?(Gtk)
       end
    end
 
-
+   def gtk3_sleep_while_idle()
+      sleep 0.1
+   end
+   
   begin
       Gtk.queue {
+	  pp "And again?"
          # Add a function to call for when GTK is idle
          Gtk.idle_add do
             gtk3_sleep_while_idle

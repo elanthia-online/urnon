@@ -11,4 +11,8 @@ module CharSettings
    def CharSettings.save()
       Settings.save()
    end
+   def CharSettings.load()
+      put "CharSettings.load() is deprecated, they are loaded automagically now."
+      :noop
+   end
 end

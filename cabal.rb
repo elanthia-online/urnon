@@ -258,6 +258,9 @@ detachable_client_thread = Thread.new {
       sleep 0.1
     }
 }
+
+Thread.current.priority = -10
+Gtk.main
 Process.daemon() if argv.daemon
 wait_until {Game.closed?}
 detachable_client_thread.kill rescue nil
