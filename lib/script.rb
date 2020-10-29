@@ -279,7 +279,7 @@ class Script < Thread
      self.run_time = Benchmark.realtime {
         begin
           respond("--- lich: #{self.name} active.") unless self.quiet
-          yield(self)
+          @value = yield(self)
           self.exit_status = 0
         rescue Pause
           Thread.stop
@@ -290,8 +290,12 @@ class Script < Thread
           self.exit_status = 1
         end
      }
-     script.kill
+     script.kill()
    }
+  end
+
+  def value()
+    super || @value
   end
 
   def script
@@ -330,8 +334,8 @@ class Script < Thread
   def kill()
     begin
       return unless @@running.include?(self)
-      
-      (@thread_group.list + self.child_threads).each {|child| child.kill unless child.is_a?(Script) }
+      (@thread_group.list + self.child_threads)
+         .each {|child| child.kill unless child.is_a?(Script) }
       @die_with.each { |script_name| Script.unsafe_kill(script_name) }
       @at_exit_procs.each { |p| report_errors { p.call } }
       @@running.delete(self)
