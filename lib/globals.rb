@@ -1319,7 +1319,7 @@ def multifput(*cmds)
 end
 
 def fput(message, *waitingfor)
-   unless script = Script.current then respond('--- waitfor: Unable to identify calling script.'); return false; end
+   unless script = Script.current then respond('--- fput: Unable to identify calling script.'); return false; end
    waitingfor.flatten!
    clear
    put(message)
@@ -2218,7 +2218,12 @@ def force_start_script(script_name,cli_vars=[], flags={})
    Script.start(script_name,cli_vars.join(" "),flags)
 end
 
-def start_script(*args)
+def start_script(name, args)
    Script.current
-   Script.start(*args)
+   Script.start(name, args.map(&:to_s).join(" "))
+end
+
+def running?(*args)
+   Script.current
+   Script.running?(*args)
 end

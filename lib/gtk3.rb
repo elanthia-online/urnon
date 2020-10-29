@@ -1,7 +1,6 @@
 require 'gtk3'
 HAVE_GTK=true
 if defined?(Gtk)
-  pp "Initialized GTK"
   Gdk.module_eval do
     define_deprecated_singleton_method :screen_height, :warn => "Gdk::screen_height is deprecated; use monitor methods instead" do |_self|
       99999
@@ -98,7 +97,6 @@ if defined?(Gtk)
     end
       # Calling Gtk API in a thread other than the main thread may cause random segfaults
     def Gtk.queue(&block)
-		 pp "Running GTK block"
          GLib::Timeout.add(1) {
             begin
               block.call
@@ -157,7 +155,6 @@ if defined?(Gtk)
    
   begin
       Gtk.queue {
-	  pp "And again?"
          # Add a function to call for when GTK is idle
          Gtk.idle_add do
             gtk3_sleep_while_idle
