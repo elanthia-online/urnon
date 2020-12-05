@@ -31,4 +31,10 @@ module Cabal::XDG
   def self.accounts()
     Cabal::XDG.yaml("accounts") || {}
   end
+
+  def self.account_for(character)
+    accounts.find {|account_name, account_info|
+      account_info["characters"].map(&:downcase).include?(character.downcase)
+    }
+  end
 end
