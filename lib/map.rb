@@ -193,13 +193,6 @@ class Map
             # retry if we are mid room update
             redo unless starting_checksum.eql?(ending_checksum)
             redo if XMLData.updating_room?
-
-            unless current_room
-               Log.out(
-                  {start: starting_checksum, end: ending_checksum}, 
-                  label: %i(Map current miss))
-            end
-
             @@cached_room_id = current_room.nil? ? nil : current_room.id
             return current_room
          }

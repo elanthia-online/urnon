@@ -131,13 +131,17 @@ $backup_dir = BACKUP_DIR + "/"
 [TEMP_DIR, DATA_DIR, SCRIPT_DIR, MAP_DIR, LOG_DIR, BACKUP_DIR].each do |dir| 
   FileUtils.mkdir_p(dir) 
 end
-Lich.init_db
 
+Lich.init_db
 argv = Opts.parse(ARGV)
-argv.character  or fail Exception, "--character= is required"
-argv = OpenStruct.new Cabal::XDG.accounts
-  .fetch(argv.character.capitalize, {})
-  .merge(argv.to_h)
+argv.character or fail Exception, "--character= is required"
+(account, account_info) = Cabal::XDG.account_for(argv.character)
+# merge the options for login
+if account
+  argv = OpenStruct.new(
+    {  account: account, 
+     character: argv.character}.merge(account_info))
+end
 
 # use env variables so they are not in logs
 ENV["PASSWORD"] or argv.password or fail Exception, "env variable PASSWORD is required"
