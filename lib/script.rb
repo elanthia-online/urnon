@@ -288,6 +288,15 @@ class Script < Thread
           respond e
           respond e.backtrace
           self.exit_status = 1
+        ensure
+         # ensure sub-threads are killed
+         (@thread_group.list + self.child_threads).each {|child| 
+            child.kill unless child.is_a?(Script)
+         }
+         # ensure sub-scripts are kills
+         @die_with.each { |script_name| Script.unsafe_kill(script_name) }
+         # ensure before_dying is ran
+         @at_exit_procs.each { |p| report_errors { p.call } }
         end
      }
      script.kill()
@@ -334,12 +343,11 @@ class Script < Thread
   def kill()
     begin
       return unless @@running.include?(self)
-      (@thread_group.list + self.child_threads)
-         .each {|child| child.kill unless child.is_a?(Script) }
-      @die_with.each { |script_name| Script.unsafe_kill(script_name) }
-      @at_exit_procs.each { |p| report_errors { p.call } }
+      
       @@running.delete(self)
-      respond("--- lich: #{self.name} exiting with status: #{self.exit_status} in #{Format.time(self.run_time)}") unless self.quiet
+      unless self.quiet
+         respond("--- lich: #{self.name} exiting with status: #{self.exit_status} in #{Format.time(self.run_time)}")
+      end
       super
       self.dispose()
       GC.start
