@@ -139,7 +139,8 @@ argv.character or fail Exception, "--character= is required"
 # merge the options for login
 if account
   argv = OpenStruct.new(
-    {  account: account, 
+    {  account: account,
+     game_code: (argv.game || "GS3"),
      character: argv.character}.merge(account_info))
 end
 
@@ -152,7 +153,7 @@ PORT = (argv.port || 0).to_i
 login_info = EAccess.auth(
   account:   ENV["ACCOUNT"] || argv.account, 
   password:  ENV["PASSWORD"] || argv.password,
-  game_code: (argv.game || "GS3"),
+  game_code: argv.game_code,
   character: argv.character)
 
 $_SERVERBUFFER_ = LimitedArray.new
