@@ -1,4 +1,5 @@
 require "yaml"
+require_relative "./xdg"
 
 module Autostart
   def self.yaml_autostart()
@@ -7,15 +8,16 @@ module Autostart
   end
 
   def self.load_yaml(file)
+    file = Cabal::XDG.path.join(file)
     return {} unless File.exists? file
-    YAML.load(File.read(file))
+    YAML.load File.read(file)
   end
 
   def self.yaml?
-    Dir.exists?("autostart")
+    Dir.exists? Cabal::XDG.path("autostart")
   end
 
-  def self.start(script)  
+  def self.start(script)
     (script, *argv)= script.strip.split(/\s+/)
     return if Script.running?(script)
     return unless Script.exists?(script)
@@ -40,7 +42,7 @@ module Autostart
     return Script.start("autostart") if Script.exists?("autostart")
   end
 
-  def self.call()    
+  def self.call()
     wait_until { XMLData.name.is_a?(String) }
     return yaml_autostart if yaml?
     autostart_lich_script

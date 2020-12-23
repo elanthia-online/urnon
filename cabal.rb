@@ -112,13 +112,13 @@ require_relative("./lib/client")
 require_relative("./lib/xdg")
 
 XMLData    = XMLParser.new
-LICH_DIR   = File.dirname File.expand_path($PROGRAM_NAME)
-TEMP_DIR   = File.join LICH_DIR, "temp"
-DATA_DIR   = File.join LICH_DIR, "data"
-SCRIPT_DIR = File.join LICH_DIR, "scripts"
-MAP_DIR    = File.join LICH_DIR, "maps"
-LOG_DIR    = File.join LICH_DIR, "logs"
-BACKUP_DIR = File.join LICH_DIR, "backup"
+LICH_DIR   = Cabal::XDG.path("").to_s
+TEMP_DIR   = Cabal::XDG.path("temp").to_s
+DATA_DIR   = Cabal::XDG.path("data").to_s
+SCRIPT_DIR = Cabal::XDG.path("scripts").to_s
+MAP_DIR    = Cabal::XDG.path("maps").to_s
+LOG_DIR    = Cabal::XDG.path("logs").to_s
+BACKUP_DIR = Cabal::XDG.path("backup").to_s
 
 $lich_dir   = LICH_DIR + "/"
 $temp_dir   = TEMP_DIR + "/"

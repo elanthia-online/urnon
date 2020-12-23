@@ -2,18 +2,20 @@ require "xdg"
 require "yaml"
 
 module Cabal::XDG
+  @root   = "cabal"
   @config = ::XDG::Config.new
-  @data   = ::XDG::Data.new
 
-  def self.config(*args)
-    @config.home.join($0, *args)
+  def self.path(*args)
+    @config.home.join(@root, *args)
   end
 
-  def self.data(*args)
-    @data.home.join($0, *args)
+  def self.scripts()
+    path.join("scripts")
   end
 
-  [config, data].each {|dir| FileUtils.mkdir_p(dir) }
+  def self.data()
+    path.join("data")
+  end
 
   def self.yaml(file)
     YAML.load(
@@ -22,7 +24,7 @@ module Cabal::XDG
   end
   
   def self.touch(file)
-    file = config.join(file)
+    file = path.join(file)
     #pp file
     FileUtils.touch(file)
     file

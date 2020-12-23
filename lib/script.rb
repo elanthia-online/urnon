@@ -3,7 +3,6 @@ require "benchmark"
 SCRIPT_CONTEXT = binding()
 
 class Script < Thread
-  class Pause < Exception;end;
   GLOBAL_SCRIPT_LOCK ||= Mutex.new
   @@running          ||= Array.new
   @@lock_holder      ||= nil
@@ -281,26 +280,35 @@ class Script < Thread
           respond("--- lich: #{self.name} active.") unless self.quiet
           @value = yield(self)
           self.exit_status = 0
-        rescue Pause
-          Thread.stop
-          next
         rescue Exception => e
           respond e
           respond e.backtrace
           self.exit_status = 1
         ensure
-         # ensure sub-threads are killed
-         (@thread_group.list + self.child_threads).each {|child| 
-            child.kill unless child.is_a?(Script)
-         }
-         # ensure sub-scripts are kills
-         @die_with.each { |script_name| Script.unsafe_kill(script_name) }
          # ensure before_dying is ran
-         @at_exit_procs.each { |p| report_errors { p.call } }
+         script.before_shutdown()
+         # ensure sub-threads are killed
+         (@thread_group.list + self.child_threads)
+          .each {|child| child.kill unless child.is_a?(Script) }
         end
      }
      script.kill()
    }
+  end
+
+  def before_shutdown()
+    @at_exit_procs.each { |cb|
+      begin
+        cb.call()
+      rescue => exception
+        respond(exception.message)
+      end
+    }
+    @at_exit_procs.clear
+    # ensure sub-scripts are kills
+    @die_with.each { |script_name| Script.unsafe_kill(script_name) }
+    @die_with.clear
+    @@running.delete(self)
   end
 
   def value()
@@ -327,10 +335,6 @@ class Script < Thread
      @hidden
   end
 
-  def dispose()
-    super
-  end
-
   def inspect
     "%s<%s>" % [self.class.name, @name]
   end
@@ -343,12 +347,8 @@ class Script < Thread
   def kill()
     begin
       return unless @@running.include?(self)
-      
-      @@running.delete(self)
-      unless self.quiet
-         respond("--- lich: #{self.name} exiting with status: #{self.exit_status} in #{Format.time(self.run_time)}")
-      end
       super
+      respond("--- lich: #{self.name} exiting with status: #{self.exit_status} in #{Format.time(self.run_time)}")
       self.dispose()
       GC.start
     rescue
