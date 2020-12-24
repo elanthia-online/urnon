@@ -88,53 +88,42 @@ module Games
         @@after_stance = val
       end
       def Spell.load(filename=nil)
-        if $SAFE == 0
-            if filename.nil?
-              if File.exists?("#{DATA_DIR}/spell-list.xml")
-                  filename = "#{DATA_DIR}/spell-list.xml"
-              elsif File.exists?("#{SCRIPT_DIR}/spell-list.xml") # deprecated
-                  filename = "#{SCRIPT_DIR}/spell-list.xml"
-              else
-                  filename = "#{DATA_DIR}/spell-list.xml"
+        Script.current
+        filename = filename.is_a?(String) ? filename : File.join(DATA_DIR, "spell-list.xml")
+
+        @@load_mutex.synchronize {
+          return true if @loaded
+          begin
+              spell_times = Hash.new
+              # reloading spell data should not reset spell tracking...
+              unless @@list.empty?
+                @@list.each { |spell| spell_times[spell.num] = spell.timeleft if spell.active? }
+                @@list.clear
               end
-            end
-            script = Script.current
-            @@load_mutex.synchronize {
-              return true if @loaded
-              begin
-                  spell_times = Hash.new
-                  # reloading spell data should not reset spell tracking...
-                  unless @@list.empty?
-                    @@list.each { |spell| spell_times[spell.num] = spell.timeleft if spell.active? }
-                    @@list.clear
-                  end
-                  File.open(filename) { |file|
-                    xml_doc = REXML::Document.new(file)
-                    xml_root = xml_doc.root
-                    xml_root.elements.each { |xml_spell| Spell.new(xml_spell) }
-                  }
-                  @@list.each { |spell|
-                    if spell_times[spell.num]
-                        spell.timeleft = spell_times[spell.num]
-                        spell.active = true
-                    end
-                  }
-                  @@bonus_list = @@list.collect { |spell| spell._bonus.keys }.flatten
-                  @@bonus_list = @@bonus_list | @@bonus_list
-                  @@cost_list = @@list.collect { |spell| spell._cost.keys }.flatten
-                  @@cost_list = @@cost_list | @@cost_list
-                  @@loaded = true
-                  return true
-              rescue
-                  respond "--- Lich: error: Spell.load: #{$!}"
-                  Lich.log "error: Spell.load: #{$!}\n\t#{$!.backtrace.join("\n\t")}"
-                  @@loaded = false
-                  return false
-              end
-            }
-        else
-            @@elevated_load.call
-        end
+              File.open(filename) { |file|
+                xml_doc = REXML::Document.new(file)
+                xml_root = xml_doc.root
+                xml_root.elements.each { |xml_spell| Spell.new(xml_spell) }
+              }
+              @@list.each { |spell|
+                if spell_times[spell.num]
+                    spell.timeleft = spell_times[spell.num]
+                    spell.active = true
+                end
+              }
+              @@bonus_list = @@list.collect { |spell| spell._bonus.keys }.flatten
+              @@bonus_list = @@bonus_list | @@bonus_list
+              @@cost_list = @@list.collect { |spell| spell._cost.keys }.flatten
+              @@cost_list = @@cost_list | @@cost_list
+              @@loaded = true
+              return true
+          rescue
+              respond "--- Lich: error: Spell.load: #{$!}"
+              Lich.log "error: Spell.load: #{$!}\n\t#{$!.backtrace.join("\n\t")}"
+              @@loaded = false
+              return false
+          end
+        }
       end
 
       def Spell.synchronize()
@@ -447,7 +436,7 @@ module Games
         release_options = options.dup
         release_options[:multicast] = nil
         if (self.mana_cost(options) > 0) and (  !checkmana(self.mana_cost(options)) or (Spell[515].active? and !checkmana(self.mana_cost(options) + [self.mana_cost(release_options)/4, 1].max))  )
-            false 
+            false
         elsif (self.stamina_cost(options) > 0) and (Spell[9699].active? or not checkstamina(self.stamina_cost(options)))
             false
         elsif (self.spirit_cost(options) > 0) and not checkspirit(self.spirit_cost(options) + 1 + [ 9912, 9913, 9914, 9916, 9916, 9916 ].delete_if { |num| !Spell[num].active? }.length)
