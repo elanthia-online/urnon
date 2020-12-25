@@ -1030,7 +1030,6 @@ class GameObj
   @@fam_room_desc = Array.new
   @@type_data     = Hash.new
   @@sellable_data = Hash.new
-  @@elevated_load = proc { GameObj.load_data }
 
   attr_reader :id
   attr_accessor :noun, :name, :before_name, :after_name
@@ -1094,14 +1093,14 @@ class GameObj
   def GameObj.[](val)
      if val.class == String
         if val =~ /^\-?[0-9]+$/
-           obj = @@inv.find { |o| o.id == val } || @@loot.find { |o| o.id == val } || @@npcs.find { |o| o.id == val } || @@pcs.find { |o| o.id == val } || [ @@right_hand, @@left_hand ].find { |o| o.id == val } || @@room_desc.find { |o| o.id == val }
+           return @@inv.find { |o| o.id == val } || @@loot.find { |o| o.id == val } || @@npcs.find { |o| o.id == val } || @@pcs.find { |o| o.id == val } || [ @@right_hand, @@left_hand ].find { |o| o.id == val } || @@room_desc.find { |o| o.id == val }
         elsif val.split(' ').length == 1
-           obj = @@inv.find { |o| o.noun == val } || @@loot.find { |o| o.noun == val } || @@npcs.find { |o| o.noun == val } || @@pcs.find { |o| o.noun == val } || [ @@right_hand, @@left_hand ].find { |o| o.noun == val } || @@room_desc.find { |o| o.noun == val }
+           return @@inv.find { |o| o.noun == val } || @@loot.find { |o| o.noun == val } || @@npcs.find { |o| o.noun == val } || @@pcs.find { |o| o.noun == val } || [ @@right_hand, @@left_hand ].find { |o| o.noun == val } || @@room_desc.find { |o| o.noun == val }
         else
-           obj = @@inv.find { |o| o.name == val } || @@loot.find { |o| o.name == val } || @@npcs.find { |o| o.name == val } || @@pcs.find { |o| o.name == val } || [ @@right_hand, @@left_hand ].find { |o| o.name == val } || @@room_desc.find { |o| o.name == val } || @@inv.find { |o| o.name =~ /\b#{Regexp.escape(val.strip)}$/i } || @@loot.find { |o| o.name =~ /\b#{Regexp.escape(val.strip)}$/i } || @@npcs.find { |o| o.name =~ /\b#{Regexp.escape(val.strip)}$/i } || @@pcs.find { |o| o.name =~ /\b#{Regexp.escape(val.strip)}$/i } || [ @@right_hand, @@left_hand ].find { |o| o.name =~ /\b#{Regexp.escape(val.strip)}$/i } || @@room_desc.find { |o| o.name =~ /\b#{Regexp.escape(val.strip)}$/i } || @@inv.find { |o| o.name =~ /\b#{Regexp.escape(val).sub(' ', ' .*')}$/i } || @@loot.find { |o| o.name =~ /\b#{Regexp.escape(val).sub(' ', ' .*')}$/i } || @@npcs.find { |o| o.name =~ /\b#{Regexp.escape(val).sub(' ', ' .*')}$/i } || @@pcs.find { |o| o.name =~ /\b#{Regexp.escape(val).sub(' ', ' .*')}$/i } || [ @@right_hand, @@left_hand ].find { |o| o.name =~ /\b#{Regexp.escape(val).sub(' ', ' .*')}$/i } || @@room_desc.find { |o| o.name =~ /\b#{Regexp.escape(val).sub(' ', ' .*')}$/i }
+           return @@inv.find { |o| o.name == val } || @@loot.find { |o| o.name == val } || @@npcs.find { |o| o.name == val } || @@pcs.find { |o| o.name == val } || [ @@right_hand, @@left_hand ].find { |o| o.name == val } || @@room_desc.find { |o| o.name == val } || @@inv.find { |o| o.name =~ /\b#{Regexp.escape(val.strip)}$/i } || @@loot.find { |o| o.name =~ /\b#{Regexp.escape(val.strip)}$/i } || @@npcs.find { |o| o.name =~ /\b#{Regexp.escape(val.strip)}$/i } || @@pcs.find { |o| o.name =~ /\b#{Regexp.escape(val.strip)}$/i } || [ @@right_hand, @@left_hand ].find { |o| o.name =~ /\b#{Regexp.escape(val.strip)}$/i } || @@room_desc.find { |o| o.name =~ /\b#{Regexp.escape(val.strip)}$/i } || @@inv.find { |o| o.name =~ /\b#{Regexp.escape(val).sub(' ', ' .*')}$/i } || @@loot.find { |o| o.name =~ /\b#{Regexp.escape(val).sub(' ', ' .*')}$/i } || @@npcs.find { |o| o.name =~ /\b#{Regexp.escape(val).sub(' ', ' .*')}$/i } || @@pcs.find { |o| o.name =~ /\b#{Regexp.escape(val).sub(' ', ' .*')}$/i } || [ @@right_hand, @@left_hand ].find { |o| o.name =~ /\b#{Regexp.escape(val).sub(' ', ' .*')}$/i } || @@room_desc.find { |o| o.name =~ /\b#{Regexp.escape(val).sub(' ', ' .*')}$/i }
         end
      elsif val.class == Regexp
-        obj = @@inv.find { |o| o.name =~ val } || @@loot.find { |o| o.name =~ val } || @@npcs.find { |o| o.name =~ val } || @@pcs.find { |o| o.name =~ val } || [ @@right_hand, @@left_hand ].find { |o| o.name =~ val } || @@room_desc.find { |o| o.name =~ val }
+        return @@inv.find { |o| o.name =~ val } || @@loot.find { |o| o.name =~ val } || @@npcs.find { |o| o.name =~ val } || @@pcs.find { |o| o.name =~ val } || [ @@right_hand, @@left_hand ].find { |o| o.name =~ val } || @@room_desc.find { |o| o.name =~ val }
      end
   end
   def GameObj
@@ -1286,56 +1285,52 @@ class GameObj
      @@contents.dup
   end
   def GameObj.load_data(filename=nil)
-     if $SAFE == 0
-        if filename.nil?
-           if File.exists?("#{DATA_DIR}/gameobj-data.xml")
-              filename = "#{DATA_DIR}/gameobj-data.xml"
-           elsif File.exists?("#{SCRIPT_DIR}/gameobj-data.xml") # deprecated
-              filename = "#{SCRIPT_DIR}/gameobj-data.xml"
-           else
-              filename = "#{DATA_DIR}/gameobj-data.xml"
-           end
-        end
-        if File.exists?(filename)
-           begin
-              @@type_data = Hash.new
-              @@sellable_data = Hash.new
-              File.open(filename) { |file|
-                 doc = REXML::Document.new(file.read)
-                 doc.elements.each('data/type') { |e|
-                    if type = e.attributes['name']
-                       @@type_data[type] = Hash.new
-                       @@type_data[type][:name]    = Regexp.new(e.elements['name'].text) unless e.elements['name'].text.nil? or e.elements['name'].text.empty?
-                       @@type_data[type][:noun]    = Regexp.new(e.elements['noun'].text) unless e.elements['noun'].text.nil? or e.elements['noun'].text.empty?
-                       @@type_data[type][:exclude] = Regexp.new(e.elements['exclude'].text) unless e.elements['exclude'].text.nil? or e.elements['exclude'].text.empty?
-                    end
-                 }
-                 doc.elements.each('data/sellable') { |e|
-                    if sellable = e.attributes['name']
-                       @@sellable_data[sellable] = Hash.new
-                       @@sellable_data[sellable][:name]    = Regexp.new(e.elements['name'].text) unless e.elements['name'].text.nil? or e.elements['name'].text.empty?
-                       @@sellable_data[sellable][:noun]    = Regexp.new(e.elements['noun'].text) unless e.elements['noun'].text.nil? or e.elements['noun'].text.empty?
-                       @@sellable_data[sellable][:exclude] = Regexp.new(e.elements['exclude'].text) unless e.elements['exclude'].text.nil? or e.elements['exclude'].text.empty?
-                    end
-                 }
-              }
-              true
-           rescue
-              @@type_data = nil
-              @@sellable_data = nil
-              echo "error: GameObj.load_data: #{$!}"
-              respond $!.backtrace[0..1]
-              false
-           end
+    if filename.nil?
+        if File.exists?("#{DATA_DIR}/gameobj-data.xml")
+          filename = "#{DATA_DIR}/gameobj-data.xml"
+        elsif File.exists?("#{SCRIPT_DIR}/gameobj-data.xml") # deprecated
+          filename = "#{SCRIPT_DIR}/gameobj-data.xml"
         else
-           @@type_data = nil
-           @@sellable_data = nil
-           echo "error: GameObj.load_data: file does not exist: #{filename}"
-           false
+          filename = "#{DATA_DIR}/gameobj-data.xml"
         end
-     else
-        @@elevated_load.call
-     end
+    end
+    if File.exists?(filename)
+        begin
+          @@type_data = Hash.new
+          @@sellable_data = Hash.new
+          File.open(filename) { |file|
+              doc = REXML::Document.new(file.read)
+              doc.elements.each('data/type') { |e|
+                if type = e.attributes['name']
+                    @@type_data[type] = Hash.new
+                    @@type_data[type][:name]    = Regexp.new(e.elements['name'].text) unless e.elements['name'].text.nil? or e.elements['name'].text.empty?
+                    @@type_data[type][:noun]    = Regexp.new(e.elements['noun'].text) unless e.elements['noun'].text.nil? or e.elements['noun'].text.empty?
+                    @@type_data[type][:exclude] = Regexp.new(e.elements['exclude'].text) unless e.elements['exclude'].text.nil? or e.elements['exclude'].text.empty?
+                end
+              }
+              doc.elements.each('data/sellable') { |e|
+                if sellable = e.attributes['name']
+                    @@sellable_data[sellable] = Hash.new
+                    @@sellable_data[sellable][:name]    = Regexp.new(e.elements['name'].text) unless e.elements['name'].text.nil? or e.elements['name'].text.empty?
+                    @@sellable_data[sellable][:noun]    = Regexp.new(e.elements['noun'].text) unless e.elements['noun'].text.nil? or e.elements['noun'].text.empty?
+                    @@sellable_data[sellable][:exclude] = Regexp.new(e.elements['exclude'].text) unless e.elements['exclude'].text.nil? or e.elements['exclude'].text.empty?
+                end
+              }
+          }
+          true
+        rescue
+          @@type_data = nil
+          @@sellable_data = nil
+          echo "error: GameObj.load_data: #{$!}"
+          respond $!.backtrace[0..1]
+          false
+        end
+    else
+        @@type_data = nil
+        @@sellable_data = nil
+        echo "error: GameObj.load_data: file does not exist: #{filename}"
+        false
+    end
   end
   def GameObj.type_data
      @@type_data

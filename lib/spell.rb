@@ -7,7 +7,6 @@ module Games
       @@bonus_list ||= Array.new
       @@cost_list ||= Array.new
       @@load_mutex = Mutex.new
-      @@elevated_load = proc { Spell.load }
       @@after_stance = nil
       attr_reader :num, :name, :timestamp, :msgup, :msgdn, :circle, :active, :type, :cast_proc, :real_time, :persist_on_death, :availability, :no_incant
       attr_accessor :stance, :channel
@@ -217,10 +216,7 @@ module Games
       end
       def time_per(options={})
         formula = self.time_per_formula(options)
-        if options[:line]
-            line = options[:line]
-        end
-        proc { begin; $SAFE = 3; rescue; nil; end; eval(formula) }.call.to_f
+        proc { eval(formula) }.call.to_f
       end
       def timeleft=(val)
         @timeleft = val
@@ -525,7 +521,7 @@ module Games
                   return false
               end
               begin
-                  proc { begin; $SAFE = 3; rescue; nil; end; eval(@cast_proc) }.call
+                  proc { eval(@cast_proc) }.call
               rescue
                   echo "cast: error: #{$!}"
                   respond $!.backtrace[0..2]
@@ -647,7 +643,7 @@ module Games
       def method_missing(*args)
         if @@bonus_list.include?(args[0].to_s.gsub('_', '-'))
             if @bonus[args[0].to_s.gsub('_', '-')]
-              proc { begin; $SAFE = 3; rescue; nil; end; eval(@bonus[args[0].to_s.gsub('_', '-')]) }.call.to_i
+              proc { eval(@bonus[args[0].to_s.gsub('_', '-')]) }.call.to_i
             else
               0
             end
@@ -681,7 +677,7 @@ module Games
             else
               if formula
                   formula.untaint if formula.tainted?
-                  proc { begin; $SAFE = 3; rescue; nil; end; eval(formula) }.call.to_i
+                  proc { eval(formula) }.call.to_i
               else
                   0
               end

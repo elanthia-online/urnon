@@ -42,7 +42,7 @@ end
 
 def echo(*messages)
    respond if messages.empty?
-   if script = Script.current 
+   if script = Script.current
       unless script.no_echo
          messages.each { |message| respond("[#{script.name}: #{message.to_s.chomp}]") }
       end
@@ -54,7 +54,7 @@ end
 
 def _echo(*messages)
    _respond if messages.empty?
-   if script = Script.current 
+   if script = Script.current
       unless script.no_echo
          messages.each { |message| _respond("[#{script.name}: #{message.to_s.chomp}]") }
       end
@@ -79,7 +79,7 @@ end
 
 def unpause_script(*names)
    names.flatten!
-   names.each { |scr| 
+   names.each { |scr|
       fnd = Script.list.find { |nm| nm.name =~ /^#{scr}/i }
       fnd.unpause if (fnd.paused and not fnd.nil?)
    }
@@ -254,7 +254,7 @@ def selectput(string, success, failure, timeout = nil)
    success = [ success ] if success.kind_of? String
    failure = [ failure ] if failure.kind_of? String
    if !string.kind_of?(String) or !success.kind_of?(Array) or !failure.kind_of?(Array) or timeout && !timeout.kind_of?(Numeric)
-      raise ArgumentError, "usage is: selectput(game_command,success_array,failure_array[,timeout_in_secs])" 
+      raise ArgumentError, "usage is: selectput(game_command,success_array,failure_array[,timeout_in_secs])"
    end
    success.flatten!
    failure.flatten!
@@ -540,7 +540,7 @@ def move(dir='none', giveup_seconds=30, giveup_lines=30)
          waitrt?
          put_dir.call
       elsif line == "You don't seem to be able to move to do that."
-         30.times { 
+         30.times {
             break if clear.include?('You regain control of your senses!')
             sleep 0.1
          }
@@ -605,7 +605,7 @@ def wait_while(announce=nil, timeout: nil)
    rescue Exception => exception
       respond exception
    ensure
-      Thread.current.priority = priosave   
+      Thread.current.priority = priosave
    end
 end
 
@@ -719,7 +719,7 @@ end
 def percentmind(num=nil)
    if num.nil?
       XMLData.mind_value
-   else 
+   else
       XMLData.mind_value >= num.to_i
    end
 end
@@ -760,7 +760,7 @@ def percentmana(num=nil)
    end
    if num.nil?
       percent
-   else 
+   else
       percent >= num.to_i
    end
 end
@@ -1295,7 +1295,7 @@ def reget(*lines)
       history.gsub!('&gt;', '>')
       history.gsub!('&lt;', '<')
    end
-   history = history.split("\n").delete_if { |line| line.nil? or line.empty? or line =~ /^[\r\n\s\t]*$/ }
+   history = history.split("\n").delete_if { |line| line.nil? or line.empty? or line =~ /^[\s]*$/ }
    if lines.first.kind_of?(Numeric) or lines.first.to_i.nonzero?
       history = history[-([lines.shift.to_i,history.length].min)..-1]
    end
