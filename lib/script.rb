@@ -98,7 +98,7 @@ class Script < Thread
     script_name = script_name.downcase
     pattern = if script_name.include?(".")
     then Regexp.new(Regexp.escape(script_name) + "$")
-    else Regexp.new("%s\.(lic|rb)$" % Regexp.escape(script_name))
+    else Regexp.new("%s.*\.(lic|rb)$" % Regexp.escape(script_name))
     end
     Dir.glob(Script.glob)
       .select {|file|
@@ -285,21 +285,21 @@ class Script < Thread
    @thread_group = ThreadGroup.new
    @start_time = Time.now.to_i
    @run_time = 0
-   @exit_status = 0
+   @exit_status = nil
    @@running.push(self)
    @thread_group.add(self)
    super {
-     self[:name] = @name
+     self[:name]   = @name
      self.priority = 1
      self.run_time = Benchmark.realtime {
         begin
           respond("--- lich: #{self.name} active.") unless self.quiet
           @value = yield(self)
-          self.exit_status = 0
+          @exit_status = :ok if @exit_status.nil?
         rescue => e
           respond e
           respond e.backtrace
-          self.exit_status = 1
+          @exit_status = :err
         ensure
           script.kill()
         end
@@ -325,7 +325,7 @@ class Script < Thread
       respond e
       respond e.backtrace
     ensure
-      respond("--- lich: #{self.name} exiting with status: #{self.exit_status} in #{Format.time(self.run_time)}")
+      respond("--- lich: #{self.name} exiting with status: #{@exit_status} in #{Format.time(self.run_time)}")
       @@running.delete(self)
       (@thread_group.list + self.child_threads).each {|child|
         respond child
@@ -371,10 +371,12 @@ class Script < Thread
 
   def kill()
     begin
+      @exit_status = :killed if @exit_status.nil?
       self.before_shutdown()
     rescue => exception
       pp exception
     ensure
+      self.dispose()
       super
     end
   end
