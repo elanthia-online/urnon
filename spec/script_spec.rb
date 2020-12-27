@@ -1,5 +1,5 @@
 require 'spec_helper'
-load 'lib/script.rb'
+load 'lib/script/script.rb'
 SCRIPT_DIR = File.join(__dir__, "scripts")
 
 describe Script do

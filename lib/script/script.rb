@@ -1,7 +1,7 @@
 require "benchmark"
-require_relative "./limited-array"
-require_relative "./format"
-require_relative "./ext/thread"
+require_relative "../limited-array"
+require_relative "../format"
+require_relative "../ext/thread"
 
 SCRIPT_CONTEXT = binding()
 
