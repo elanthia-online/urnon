@@ -1,4 +1,7 @@
 require "benchmark"
+require_relative "./limited-array"
+require_relative "./format"
+require_relative "./ext/thread"
 
 SCRIPT_CONTEXT = binding()
 
@@ -16,7 +19,7 @@ class Script < Thread
   def self.atomic(); GLOBAL_SCRIPT_LOCK.synchronize {yield}; end
 
   def self.namescript_incoming(line)
-     Script.new_downstream(line)
+    Script.new_downstream(line)
   end
 
   def self.current()
@@ -63,10 +66,10 @@ class Script < Thread
   end
 
   def self.unpause(name)
-     if s = @@running.select(&:paused?).find { |i| i.name.downcase == name.downcase}
-        s.unpause
-        return s
-     end
+    if s = @@running.select(&:paused?).find { |i| i.name.downcase == name.downcase}
+      s.unpause
+      return s
+    end
   end
 
   def self.kill(name)
@@ -88,26 +91,39 @@ class Script < Thread
   end
 
   def self.glob()
-     File.join(SCRIPT_DIR, "**", "*.{lic,rb}")
+    File.join(SCRIPT_DIR, "**", "*.{lic,rb}")
   end
 
   def self.match(script_name)
-     script_name = script_name.downcase
-     Dir.glob(Script.glob)
-        .select {|file| file.downcase.slice(SCRIPT_DIR.size..-1).include?(script_name) }
-        .sort_by {|file|
-           file.index("#{script_name}.lic") || file.index("#{script_name}.rb") || file.size
-        }
+    script_name = script_name.downcase
+    pattern = if script_name.include?(".")
+    then Regexp.new(Regexp.escape(script_name) + "$")
+    else Regexp.new("%s\.(lic|rb)$" % Regexp.escape(script_name))
+    end
+    Dir.glob(Script.glob)
+      .select {|file|
+        File.file?(file) && file =~ pattern
+      }
+      .sort_by {|file|
+          file.index("#{script_name}.lic") ||
+          file.index("#{script_name}.rb") ||
+          file.size
+      }
   end
 
+  def self.exist?(script_name)
+    match(script_name).size.eql?(1)
+  end
+
+  # this is not the way, ruby standards say it should be `exist?`
   def self.exists?(script_name)
-     match(script_name).any? {|path| File.file?(path) }
+    exist?(script_name)
   end
 
   def self.new_downstream_xml(line)
-     for script in @@running
-        script.downstream_buffer.push(line.chomp) if script.want_downstream_xml
-     end
+    for script in @@running
+      script.downstream_buffer.push(line.chomp) if script.want_downstream_xml
+    end
   end
 
   def self.new_upstream(line)
@@ -156,7 +172,7 @@ class Script < Thread
   end
 
   def self.open_file(*args)
-   fail Exception, "Script.open_file() is hard deprecated use the normal File class"
+    fail Exception, "Script.open_file() is deprecated\nuse File.open from the ruby stdlib"
   end
 
   def self.at_exit(&block)
@@ -257,8 +273,8 @@ class Script < Thread
    @want_upstream = false
    @unique_buffer = LimitedArray.new
    @watchfor = Hash.new
-   @at_exit_procs = Array.new
-   @die_with = Array.new
+   @at_exit_procs = []
+   @die_with = []
    @hidden = false
    @no_pause_all = false
    @no_kill_all = false
@@ -280,32 +296,43 @@ class Script < Thread
           respond("--- lich: #{self.name} active.") unless self.quiet
           @value = yield(self)
           self.exit_status = 0
-        rescue Exception => e
+        rescue => e
           respond e
           respond e.backtrace
           self.exit_status = 1
+        ensure
+          script.kill()
         end
      }
-     script.kill()
    }
   end
 
   def before_shutdown()
-    @at_exit_procs.each { |cb|
-      begin
-        cb.call()
-      rescue => exception
-        respond(exception.message)
-      end
-    }
-    @at_exit_procs.clear
-    # ensure sub-scripts are kills
-    @die_with.each { |script_name| Script.unsafe_kill(script_name) }
-    @die_with.clear
-    (@thread_group.list + self.child_threads)
-      .each {|child| child.kill unless child.is_a?(Script) }
-    respond("--- lich: #{self.name} exiting with status: #{self.exit_status} in #{Format.time(self.run_time)}")
-    @@running.delete(self)
+    begin
+      @at_exit_procs.each { |cb|
+        begin
+          cb.call()
+        rescue => e
+          respond e
+          respond e.backtrace
+        end
+      }
+      # ensure sub-scripts are kills
+      @die_with.each { |script_name|
+        Script.unsafe_kill(script_name)
+      }
+    rescue => e
+      respond e
+      respond e.backtrace
+    ensure
+      respond("--- lich: #{self.name} exiting with status: #{self.exit_status} in #{Format.time(self.run_time)}")
+      @@running.delete(self)
+      (@thread_group.list + self.child_threads).each {|child|
+        respond child
+        child.kill unless child.is_a?(Script)
+      }
+      self.dispose()
+    end
     self
   end
 
@@ -343,12 +370,13 @@ class Script < Thread
   end
 
   def kill()
-   respond "Script.kill(%s)" % self.name
-   return self unless @@running.include?(self)
-   self.before_shutdown()
-   super
-   self.dispose()
-   GC.start
+    begin
+      self.before_shutdown()
+    rescue => exception
+      pp exception
+    ensure
+      super
+    end
   end
 
   def kill_tree()

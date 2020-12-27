@@ -65,6 +65,7 @@ $version = LICH_VERSION
 $room_count = 0
 Dir.chdir(__dir__)
 module Cabal; end
+require_relative("./lib/util")
 require_relative("./lib/lich")
 ## primative extensions to String, etc
 require_relative("./lib/ext")

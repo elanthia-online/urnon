@@ -3,16 +3,7 @@ class NilClass
     nil
   end
   def method_missing(method, *args)
-    return nil unless ENV["DEBUG"]
-    begin
-      raise "NilClass:undefined_method method=#{method} args=#{args}"
-    rescue => e
-      $stderr.puts "Message: %s\nTimestamp:%s\nBacktrace:\n%s\n" % [
-        e.message,
-        Time.now,
-        e.backtrace.join("\n")
-        ]
-    end
+    Util.trace("NilClass:undefined_method method=#{method} args=#{args}") if ENV["DEBUG"]
     nil
   end
   def split(*val)
@@ -59,24 +50,6 @@ end
 ## needed to Script subclass
 ##
 require_relative("./script")
-
-class Thread
-  alias_method :_initialize, :initialize
-
-  def initialize(*args, &block)
-    @_parent = Thread.current if Thread.current.is_a?(Script)
-    _initialize(*args, &block)
-  end
-
-  def parent
-    @_parent
-  end
-
-  def dispose()
-    @_parent = nil
-  end
-end
-
 
 class String
    def to_a # for compatibility with Ruby 1.8
