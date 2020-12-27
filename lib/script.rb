@@ -35,7 +35,7 @@ class Script < Thread
   def self.start(*args)
      Script.of(args)
   end
-  
+
   def self.run(*args)
      s = Script.of(args)
      s.value
@@ -196,7 +196,7 @@ class Script < Thread
     opts[:args] = scriptv
 
     opts.merge!(scriptv) if scriptv.is_a?(Hash)
-    
+
     if opts[:file].nil?
       return respond "--- lich: could not find script #{opts[:name]} not found in #{Script.glob}"
     end
@@ -206,7 +206,7 @@ class Script < Thread
     #Log.out(opts, label: %i(script of))
 
     if Script.running.find { |s| s.name.eql?(opts[:name]) } and not opts[:force]
-      return respond "--- lich: #{opts[:name]} is already running" 
+      return respond "--- lich: #{opts[:name]} is already running"
     end
 
     Script.new(opts) { |script|
@@ -217,16 +217,16 @@ class Script < Thread
     }
   end
 
-  attr_reader :name, :vars, :safe, 
+  attr_reader :name, :vars, :safe,
               :file_name, :at_exit_procs,
               :thread_group
 
   attr_accessor :quiet, :no_echo, :paused,
                 :hidden, :silent,
-                :want_downstream, :want_downstream_xml, 
-                :want_upstream, :want_script_output, 
-                :no_pause_all, :no_kill_all, 
-                :downstream_buffer, :upstream_buffer, :unique_buffer, 
+                :want_downstream, :want_downstream_xml,
+                :want_upstream, :want_script_output,
+                :no_pause_all, :no_kill_all,
+                :downstream_buffer, :upstream_buffer, :unique_buffer,
                 :die_with, :watchfor, :command_line, :ignore_pause,
                 :exit_status, :start_time, :run_time
 
@@ -234,7 +234,7 @@ class Script < Thread
    @file_name = args[:file]
    @name = args[:name]
    @vars = case args[:args]
-      when Array 
+      when Array
          args[:args]
       when String
          if args[:args].empty?
@@ -284,12 +284,6 @@ class Script < Thread
           respond e
           respond e.backtrace
           self.exit_status = 1
-        ensure
-         # ensure before_dying is ran
-         script.before_shutdown()
-         # ensure sub-threads are killed
-         (@thread_group.list + self.child_threads)
-          .each {|child| child.kill unless child.is_a?(Script) }
         end
      }
      script.kill()
@@ -308,7 +302,11 @@ class Script < Thread
     # ensure sub-scripts are kills
     @die_with.each { |script_name| Script.unsafe_kill(script_name) }
     @die_with.clear
+    (@thread_group.list + self.child_threads)
+      .each {|child| child.kill unless child.is_a?(Script) }
+    respond("--- lich: #{self.name} exiting with status: #{self.exit_status} in #{Format.time(self.run_time)}")
     @@running.delete(self)
+    self
   end
 
   def value()
@@ -345,22 +343,18 @@ class Script < Thread
   end
 
   def kill()
-    begin
-      return unless @@running.include?(self)
-      super
-      respond("--- lich: #{self.name} exiting with status: #{self.exit_status} in #{Format.time(self.run_time)}")
-      self.dispose()
-      GC.start
-    rescue
-      respond "--- lich: error: #{$!}\n\t#{$!.backtrace.join("\n\t")}"
-      Lich.log "error: #{$!}\n\t#{$!.backtrace.join("\n\t")}"
-    end
+   respond "Script.kill(%s)" % self.name
+   return self unless @@running.include?(self)
+   self.before_shutdown()
+   super
+   self.dispose()
+   GC.start
   end
 
   def kill_tree()
     #Log.out({this: self.name, parent: self.parent.name}, label: %i(script kill))
-    GLOBAL_SCRIPT_LOCK.synchronize { 
-      @@lock_holder = self 
+    GLOBAL_SCRIPT_LOCK.synchronize {
+      @@lock_holder = self
       self.kill()
       @@lock_holder = nil
     }
@@ -381,7 +375,7 @@ class Script < Thread
      @at_exit_procs.clear
      true
   end
-  
+
   def exit(status = 0)
     @exit_status = status
     kill
@@ -454,7 +448,7 @@ class Script < Thread
         @upstream_buffer.shift
      end
   end
- 
+
   def unique_gets
      sleep 0.05 while @unique_buffer.empty?
      @unique_buffer.shift
@@ -471,7 +465,7 @@ class Script < Thread
   def safe?
      @safe
   end
-  
+
   def feedme_upstream
      @want_upstream = !@want_upstream
   end

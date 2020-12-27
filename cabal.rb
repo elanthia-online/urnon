@@ -112,7 +112,7 @@ require_relative("./lib/client")
 require_relative("./lib/xdg")
 
 XMLData    = XMLParser.new
-LICH_DIR   = Cabal::XDG.path("").to_s
+LICH_DIR   = Cabal::XDG.path.to_s
 TEMP_DIR   = Cabal::XDG.path("temp").to_s
 DATA_DIR   = Cabal::XDG.path("data").to_s
 SCRIPT_DIR = Cabal::XDG.path("scripts").to_s
@@ -128,8 +128,8 @@ $map_dir    = MAP_DIR + "/"
 $log_dir    = LOG_DIR + "/"
 $backup_dir = BACKUP_DIR + "/"
 
-[TEMP_DIR, DATA_DIR, SCRIPT_DIR, MAP_DIR, LOG_DIR, BACKUP_DIR].each do |dir| 
-  FileUtils.mkdir_p(dir) 
+[TEMP_DIR, DATA_DIR, SCRIPT_DIR, MAP_DIR, LOG_DIR, BACKUP_DIR].each do |dir|
+  FileUtils.mkdir_p(dir)
 end
 
 Lich.init_db
@@ -151,7 +151,7 @@ ENV["ACCOUNT"]  or argv.account or fail Exception, "env variable ACCOUNT is requ
 PORT = (argv.port || 0).to_i
 
 login_info = EAccess.auth(
-  account:   ENV["ACCOUNT"] || argv.account, 
+  account:   ENV["ACCOUNT"] || argv.account,
   password:  ENV["PASSWORD"] || argv.password,
   game_code: argv.game_code,
   character: argv.character)
@@ -190,7 +190,7 @@ detachable_client_thread = Thread.new {
         port = server.addr[1]
         PORT = port if PORT == 0
         $0 = "cabal character=%s port=%s" % [argv.character, port]
-        $stdout.write("/cabal UP %s\n" % 
+        $stdout.write("/cabal UP %s\n" %
           {character: argv.character, port: port}.to_json)
         $_DETACHABLE_CLIENT_ = SynchronizedSocket.new(server.accept)
         $_DETACHABLE_CLIENT_.sync = true
@@ -241,7 +241,7 @@ detachable_client_thread = Thread.new {
                 init_str = nil
             }
             while client_string = $_DETACHABLE_CLIENT_.gets
-                client_string = "#{$cmd_prefix}#{client_string}" 
+                client_string = "#{$cmd_prefix}#{client_string}"
                 begin
                   $_IDLETIMESTAMP_ = Time.now
                   do_client(client_string)
@@ -255,7 +255,7 @@ detachable_client_thread = Thread.new {
             respond "--- Lich: error: client_thread: #{$!}"
             respond $!.backtrace.first
             Lich.log "error: client_thread: #{$!}\n\t#{$!.backtrace.join("\n\t")}"
-          ensure 
+          ensure
             $_DETACHABLE_CLIENT_.close rescue nil
             $_DETACHABLE_CLIENT_ = nil
           end

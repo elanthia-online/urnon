@@ -650,7 +650,7 @@ module Games
         elsif @@bonus_list.include?(args[0].to_s.sub(/_formula$/, '').gsub('_', '-'))
             @bonus[args[0].to_s.sub(/_formula$/, '').gsub('_', '-')].dup
         elsif (args[0].to_s =~ /_cost(?:_formula)?$/) and @@cost_list.include?(args[0].to_s.sub(/_formula$/, '').sub(/_cost$/, ''))
-            options = args[1].to_hash
+            options = (args[1] || {}).to_hash
             if options[:caster] and (options[:caster] !~ /^(?:self|#{XMLData.name})$/i)
               if options[:target] and (options[:target].downcase == options[:caster].downcase)
                   formula = @cost[args[0].to_s.sub(/_formula$/, '').sub(/_cost$/, '')]['self'].dup

@@ -1,27 +1,36 @@
 class NilClass
-   def dup
-      nil
-   end
-   def method_missing(*args)
-      nil
-   end
-   def split(*val)
-      Array.new
-   end
-   def to_s
-      ""
-   end
-   def strip
-      ""
-   end
-   def +(val)
-      val
-   end
-   def closed?
-      true
-   end
+  def dup
+    nil
+  end
+  def method_missing(method, *args)
+    return nil unless ENV["DEBUG"]
+    begin
+      raise "NilClass:undefined_method method=#{method} args=#{args}"
+    rescue => e
+      $stderr.puts "Message: %s\nTimestamp:%s\nBacktrace:\n%s\n" % [
+        e.message,
+        Time.now,
+        e.backtrace.join("\n")
+        ]
+    end
+    nil
+  end
+  def split(*val)
+    Array.new
+  end
+  def to_s
+    ""
+  end
+  def strip
+    ""
+  end
+  def +(val)
+    val
+  end
+  def closed?
+    true
+  end
 end
-
 
 class Numeric
   def as_time
@@ -32,32 +41,15 @@ class Numeric
   end
 end
 
-=begin
-class TrueClass
-  def method_missing(*usersave)
-     true
-  end
-end
-
-class FalseClass
-  def method_missing(*usersave)
-     nil
-  end
-end
-=end
-
 class String
-  @@elevated_untaint = proc { |what| what.orig_untaint }
-  alias :orig_untaint :untaint
-  def untaint
-     @@elevated_untaint.call(self)
-  end
   def to_s
      self.dup
   end
+
   def stream
      @stream
   end
+
   def stream=(val)
      @stream ||= val
   end
@@ -96,6 +88,10 @@ class String
    def split_as_list
       string = self
       string.sub!(/^You (?:also see|notice) |^In the .+ you see /, ',')
-      string.sub('.','').sub(/ and (an?|some|the)/, ', \1').split(',').reject { |str| str.strip.empty? }.collect { |str| str.lstrip }
+      string.sub('.','')
+        .sub(/ and (an?|some|the)/, ', \1')
+        .split(',')
+        .reject { |str| str.strip.empty? }
+        .collect { |str| str.lstrip }
    end
 end
