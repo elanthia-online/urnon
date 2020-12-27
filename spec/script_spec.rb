@@ -52,6 +52,6 @@ describe Script do
     exiter = Script.start("exit")
     sleep 0.1
     expect(Script.list.include?(exiter)).to be(false)
-    expect(exiter.status).to eq(:bailed)
+    expect(exiter.status).to eq(:bail)
   end
 end
