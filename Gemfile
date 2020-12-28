@@ -4,8 +4,14 @@ source "https://rubygems.org"
 
 git_source(:github) {|repo_name| "https://github.com/#{repo_name}" }
 
-# gem "rails"
-
 gem "sqlite3", "~> 1.4"
-gem "gtk2"
+gem "gtk3"
 gem "xdg"
+
+group :development do
+  gem 'guard'
+  gem 'rspec'
+  gem 'guard-rspec'
+  gem 'libnotify'
+  gem 'pry'
+end

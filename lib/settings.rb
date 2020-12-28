@@ -2,10 +2,9 @@
 module Settings
   @settings    = Hash.new
   @md5_at_load = Hash.new
-  @mutex       = Mutex.new
+  @mutex     ||= Mutex.new
 
-  Thread.new {
-    self[:name] = "settings:save"
+  @autosave  ||= Thread.new {
     loop {
       begin
         sleep 10
@@ -19,12 +18,13 @@ module Settings
 
   def self.get(scope)
     Script.current do |script|
+      return {} unless script
       @mutex.synchronize {
         unless @settings[script.name] and @settings[script.name][scope]
           begin
             _hash = Lich.db.get_first_value(
-              'SELECT hash FROM script_auto_settings WHERE script=? AND scope=?;', 
-              script.name.encode('UTF-8'), 
+              'SELECT hash FROM script_auto_settings WHERE script=? AND scope=?;',
+              script.name.encode('UTF-8'),
               scope.encode('UTF-8'))
           rescue SQLite3::BusyException
             sleep 0.1
@@ -48,26 +48,28 @@ module Settings
           @md5_at_load[script.name][scope] = Digest::MD5.hexdigest(@settings[script.name][scope].to_s)
         end
       }
-      @settings[script.name][scope]
+      @settings.dig(script.name, scope) || {}
     end
   end
 
   def Settings.[](name)
-     Settings.get(':')[name]
+    kv = Settings.get(':') || {}
+    kv[name]
   end
-  
+
   def Settings.[]=(name, value)
-     Settings.get(':')[name] = value
+    Settings.get(':')[name]
+    Settings.get(':')[name] = value
   end
 
   def Settings.load()
    # noop
   end
-  
+
   def Settings.to_hash(scope=':')
      Settings.get(scope)
   end
-  
+
   def Settings.char
      Settings.get("#{XMLData.game}:#{XMLData.name}")
   end
@@ -90,9 +92,9 @@ module Settings
                blob = SQLite3::Blob.new(Marshal.dump(data))
                begin
                   Lich.db.execute(
-                    'INSERT OR REPLACE INTO script_auto_settings(script,scope,hash) VALUES(?,?,?);', 
-                    script_name.encode('UTF-8'), 
-                    scope.encode('UTF-8'), 
+                    'INSERT OR REPLACE INTO script_auto_settings(script,scope,hash) VALUES(?,?,?);',
+                    script_name.encode('UTF-8'),
+                    scope.encode('UTF-8'),
                     blob)
                rescue SQLite3::BusyException
                   sleep 0.1

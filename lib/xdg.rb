@@ -5,8 +5,13 @@ module Cabal::XDG
   @root   = "cabal"
   @config = ::XDG::Config.new
 
+  def self.app()
+    @config.home.join(@root)
+  end
+
   def self.path(*args)
-    @config.home.join(@root, *args)
+    return app if args.empty?
+    app.join(*args)
   end
 
   def self.scripts()
@@ -22,7 +27,7 @@ module Cabal::XDG
       File.read touch(file.to_s + ".yaml"),
       symbolize_names: true)
   end
-  
+
   def self.touch(file)
     file = path.join(file)
     #pp file

@@ -1103,29 +1103,31 @@ class GameObj
         return @@inv.find { |o| o.name =~ val } || @@loot.find { |o| o.name =~ val } || @@npcs.find { |o| o.name =~ val } || @@pcs.find { |o| o.name =~ val } || [ @@right_hand, @@left_hand ].find { |o| o.name =~ val } || @@room_desc.find { |o| o.name =~ val }
      end
   end
-  def GameObj
-     @noun
-  end
+
   def full_name
      "#{@before_name}#{' ' unless @before_name.nil? or @before_name.empty?}#{name}#{' ' unless @after_name.nil? or @after_name.empty?}#{@after_name}"
   end
+
   def GameObj.new_npc(id, noun, name, status=nil)
      obj = GameObj.new(id, noun, name)
      @@npcs.push(obj)
      @@npc_status[id] = status
      obj
   end
+
   def GameObj.new_loot(id, noun, name)
      obj = GameObj.new(id, noun, name)
      @@loot.push(obj)
      obj
   end
+
   def GameObj.new_pc(id, noun, name, status=nil)
      obj = GameObj.new(id, noun, name)
      @@pcs.push(obj)
      @@pc_status[id] = status
      obj
   end
+
   def GameObj.new_inv(id, noun, name, container=nil, before=nil, after=nil)
      obj = GameObj.new(id, noun, name, before, after)
      if container
@@ -1135,207 +1137,193 @@ class GameObj
      end
      obj
   end
+
   def GameObj.new_room_desc(id, noun, name)
      obj = GameObj.new(id, noun, name)
      @@room_desc.push(obj)
      obj
   end
+
   def GameObj.new_fam_room_desc(id, noun, name)
      obj = GameObj.new(id, noun, name)
      @@fam_room_desc.push(obj)
      obj
   end
+
   def GameObj.new_fam_loot(id, noun, name)
      obj = GameObj.new(id, noun, name)
      @@fam_loot.push(obj)
      obj
   end
+
   def GameObj.new_fam_npc(id, noun, name)
      obj = GameObj.new(id, noun, name)
      @@fam_npcs.push(obj)
      obj
   end
+
   def GameObj.new_fam_pc(id, noun, name)
      obj = GameObj.new(id, noun, name)
      @@fam_pcs.push(obj)
      obj
   end
+
   def GameObj.new_right_hand(id, noun, name)
      @@right_hand = GameObj.new(id, noun, name)
   end
+
   def GameObj.right_hand
      @@right_hand.dup
   end
+
   def GameObj.new_left_hand(id, noun, name)
      @@left_hand = GameObj.new(id, noun, name)
   end
+
   def GameObj.left_hand
      @@left_hand.dup
   end
+
   def GameObj.clear_loot
      @@loot.clear
   end
+
   def GameObj.clear_npcs
      @@npcs.clear
      @@npc_status.clear
   end
+
   def GameObj.clear_pcs
-     @@pcs.clear
-     @@pc_status.clear
+    @@pcs.clear
+    @@pc_status.clear
   end
+
   def GameObj.clear_inv
-     @@inv.clear
+    @@inv.clear
   end
+
   def GameObj.clear_room_desc
-     @@room_desc.clear
+    @@room_desc.clear
   end
+
   def GameObj.clear_fam_room_desc
-     @@fam_room_desc.clear
+    @@fam_room_desc.clear
   end
+
   def GameObj.clear_fam_loot
      @@fam_loot.clear
   end
+
   def GameObj.clear_fam_npcs
-     @@fam_npcs.clear
+    @@fam_npcs.clear
   end
+
   def GameObj.clear_fam_pcs
-     @@fam_pcs.clear
+    @@fam_pcs.clear
   end
+
   def GameObj.npcs
-     if @@npcs.empty?
-        nil
-     else
-        @@npcs.dup
-     end
+    @@npcs.dup
   end
+
   def GameObj.loot
-     if @@loot.empty?
-        nil
-     else
-        @@loot.dup
-     end
+    @@loot.dup
   end
+
   def GameObj.pcs
-     if @@pcs.empty?
-        nil
-     else
-        @@pcs.dup
-     end
+    @@pcs.dup
   end
+
   def GameObj.inv
-     if @@inv.empty?
-        nil
-     else
-        @@inv.dup
-     end
+    @@inv.dup
   end
+
   def GameObj.room_desc
-     if @@room_desc.empty?
-        nil
-     else
-        @@room_desc.dup
-     end
+    @@room_desc.dup
   end
+
   def GameObj.fam_room_desc
-     if @@fam_room_desc.empty?
-        nil
-     else
-        @@fam_room_desc.dup
-     end
+    @@fam_room_desc.dup
   end
+
   def GameObj.fam_loot
-     if @@fam_loot.empty?
-        nil
-     else
-        @@fam_loot.dup
-     end
+    @@fam_loot.dup
   end
+
   def GameObj.fam_npcs
-     if @@fam_npcs.empty?
-        nil
-     else
-        @@fam_npcs.dup
-     end
+    @@fam_npcs.dup
   end
+
   def GameObj.fam_pcs
-     if @@fam_pcs.empty?
-        nil
-     else
-        @@fam_pcs.dup
-     end
+    @@fam_pcs.dup
   end
+
   def GameObj.clear_container(container_id)
      @@contents[container_id] = Array.new
   end
+
   def GameObj.delete_container(container_id)
      @@contents.delete(container_id)
   end
+
   def GameObj.targets
      @@npcs.select { |n| XMLData.current_target_ids.include?(n.id) }
   end
+
   def GameObj.dead
-     dead_list = Array.new
-     for obj in @@npcs
-        dead_list.push(obj) if obj.status == "dead"
-     end
-     return nil if dead_list.empty?
-     return dead_list
+    @@npcs.select {|npc| npc.status.eql?("dead")}
   end
+
   def GameObj.containers
      @@contents.dup
   end
+
   def GameObj.load_data(filename=nil)
-    if filename.nil?
-        if File.exists?("#{DATA_DIR}/gameobj-data.xml")
-          filename = "#{DATA_DIR}/gameobj-data.xml"
-        elsif File.exists?("#{SCRIPT_DIR}/gameobj-data.xml") # deprecated
-          filename = "#{SCRIPT_DIR}/gameobj-data.xml"
-        else
-          filename = "#{DATA_DIR}/gameobj-data.xml"
-        end
-    end
+    filename = "#{DATA_DIR}/gameobj-data.xml" if filename.nil?
     if File.exists?(filename)
-        begin
-          @@type_data = Hash.new
-          @@sellable_data = Hash.new
-          File.open(filename) { |file|
-              doc = REXML::Document.new(file.read)
-              doc.elements.each('data/type') { |e|
-                if type = e.attributes['name']
-                    @@type_data[type] = Hash.new
-                    @@type_data[type][:name]    = Regexp.new(e.elements['name'].text) unless e.elements['name'].text.nil? or e.elements['name'].text.empty?
-                    @@type_data[type][:noun]    = Regexp.new(e.elements['noun'].text) unless e.elements['noun'].text.nil? or e.elements['noun'].text.empty?
-                    @@type_data[type][:exclude] = Regexp.new(e.elements['exclude'].text) unless e.elements['exclude'].text.nil? or e.elements['exclude'].text.empty?
-                end
-              }
-              doc.elements.each('data/sellable') { |e|
-                if sellable = e.attributes['name']
-                    @@sellable_data[sellable] = Hash.new
-                    @@sellable_data[sellable][:name]    = Regexp.new(e.elements['name'].text) unless e.elements['name'].text.nil? or e.elements['name'].text.empty?
-                    @@sellable_data[sellable][:noun]    = Regexp.new(e.elements['noun'].text) unless e.elements['noun'].text.nil? or e.elements['noun'].text.empty?
-                    @@sellable_data[sellable][:exclude] = Regexp.new(e.elements['exclude'].text) unless e.elements['exclude'].text.nil? or e.elements['exclude'].text.empty?
-                end
-              }
-          }
-          true
-        rescue
-          @@type_data = nil
-          @@sellable_data = nil
-          echo "error: GameObj.load_data: #{$!}"
-          respond $!.backtrace[0..1]
-          false
-        end
-    else
+      begin
+        @@type_data = Hash.new
+        @@sellable_data = Hash.new
+        File.open(filename) { |file|
+            doc = REXML::Document.new(file.read)
+            doc.elements.each('data/type') { |e|
+              if type = e.attributes['name']
+                  @@type_data[type] = Hash.new
+                  @@type_data[type][:name]    = Regexp.new(e.elements['name'].text) unless e.elements['name'].text.nil? or e.elements['name'].text.empty?
+                  @@type_data[type][:noun]    = Regexp.new(e.elements['noun'].text) unless e.elements['noun'].text.nil? or e.elements['noun'].text.empty?
+                  @@type_data[type][:exclude] = Regexp.new(e.elements['exclude'].text) unless e.elements['exclude'].text.nil? or e.elements['exclude'].text.empty?
+              end
+            }
+            doc.elements.each('data/sellable') { |e|
+              if sellable = e.attributes['name']
+                  @@sellable_data[sellable] = Hash.new
+                  @@sellable_data[sellable][:name]    = Regexp.new(e.elements['name'].text) unless e.elements['name'].text.nil? or e.elements['name'].text.empty?
+                  @@sellable_data[sellable][:noun]    = Regexp.new(e.elements['noun'].text) unless e.elements['noun'].text.nil? or e.elements['noun'].text.empty?
+                  @@sellable_data[sellable][:exclude] = Regexp.new(e.elements['exclude'].text) unless e.elements['exclude'].text.nil? or e.elements['exclude'].text.empty?
+              end
+            }
+        }
+        true
+      rescue
         @@type_data = nil
         @@sellable_data = nil
-        echo "error: GameObj.load_data: file does not exist: #{filename}"
+        echo "error: GameObj.load_data: #{$!}"
+        respond $!.backtrace[0..1]
         false
+      end
+    else
+      @@type_data = nil
+      @@sellable_data = nil
+      echo "error: GameObj.load_data: file does not exist: #{filename}"
+      false
     end
   end
+
   def GameObj.type_data
-     @@type_data
+    @@type_data
   end
+
   def GameObj.sellable_data
-     @@sellable_data
+    @@sellable_data
   end
 end

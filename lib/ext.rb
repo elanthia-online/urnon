@@ -1,27 +1,27 @@
 class NilClass
-   def dup
-      nil
-   end
-   def method_missing(*args)
-      nil
-   end
-   def split(*val)
-      Array.new
-   end
-   def to_s
-      ""
-   end
-   def strip
-      ""
-   end
-   def +(val)
-      val
-   end
-   def closed?
-      true
-   end
+  def dup
+    nil
+  end
+  def method_missing(method, *args)
+    Util.trace("NilClass:undefined_method method=#{method} args=#{args}") if ENV["DEBUG"]
+    nil
+  end
+  def split(*val)
+    Array.new
+  end
+  def to_s
+    ""
+  end
+  def strip
+    ""
+  end
+  def +(val)
+    val
+  end
+  def closed?
+    true
+  end
 end
-
 
 class Numeric
   def as_time
@@ -32,32 +32,15 @@ class Numeric
   end
 end
 
-=begin
-class TrueClass
-  def method_missing(*usersave)
-     true
-  end
-end
-
-class FalseClass
-  def method_missing(*usersave)
-     nil
-  end
-end
-=end
-
 class String
-  @@elevated_untaint = proc { |what| what.orig_untaint }
-  alias :orig_untaint :untaint
-  def untaint
-     @@elevated_untaint.call(self)
-  end
   def to_s
      self.dup
   end
+
   def stream
      @stream
   end
+
   def stream=(val)
      @stream ||= val
   end
@@ -66,25 +49,7 @@ end
 ##
 ## needed to Script subclass
 ##
-require_relative("./script")
-
-class Thread
-  alias_method :_initialize, :initialize
-
-  def initialize(*args, &block)
-    @_parent = Thread.current if Thread.current.is_a?(Script)
-    _initialize(*args, &block)
-  end
-
-  def parent
-    @_parent
-  end
-
-  def dispose()
-    @_parent = nil
-  end
-end
-
+require_relative("./script/script")
 
 class String
    def to_a # for compatibility with Ruby 1.8
@@ -96,6 +61,10 @@ class String
    def split_as_list
       string = self
       string.sub!(/^You (?:also see|notice) |^In the .+ you see /, ',')
-      string.sub('.','').sub(/ and (an?|some|the)/, ', \1').split(',').reject { |str| str.strip.empty? }.collect { |str| str.lstrip }
+      string.sub('.','')
+        .sub(/ and (an?|some|the)/, ', \1')
+        .split(',')
+        .reject { |str| str.strip.empty? }
+        .collect { |str| str.lstrip }
    end
 end

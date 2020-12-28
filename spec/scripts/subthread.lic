@@ -1,0 +1,8 @@
+module Test
+  $test = self
+  @thread = Thread.new {loop {sleep 0.1}}
+  def self.thread()
+    @thread
+  end
+  exit(:bail)
+end
