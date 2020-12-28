@@ -49,7 +49,7 @@ end
 ##
 ## needed to Script subclass
 ##
-require_relative("./script")
+require_relative("./script/script")
 
 class String
    def to_a # for compatibility with Ruby 1.8

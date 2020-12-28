@@ -11,7 +11,7 @@ describe Script do
   end
 
   it "Script.match" do
-    expect(Script.match("ad").size).to eq(1)
+    expect(Script.match("add").size).to eq(1)
   end
 
   it "Script.exists?" do
@@ -53,5 +53,17 @@ describe Script do
     sleep 0.1
     expect(Script.list.include?(exiter)).to be(false)
     expect(exiter.status).to eq(:bail)
+  end
+
+  it "Script.start / sub-thread" do
+    subthread = Script.run("subthread")
+    expect($test.thread.alive?).to be(false)
+    expect($test.thread.parent).to be(nil)
+    expect(Script.list.include?(subthread)).to be(false)
+  end
+
+  it "Script.run / double" do
+    Script.start("sleep")
+    expect(Script.start("sleep")).to eq(:already_running)
   end
 end

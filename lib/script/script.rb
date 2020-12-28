@@ -214,19 +214,19 @@ class Script < Thread
     opts.merge!(scriptv) if scriptv.is_a?(Hash)
 
     if opts[:file].nil?
-      return respond "--- lich: could not find script #{opts[:name]} not found in #{Script.glob}"
+      respond "--- lich: could not find script #{opts[:name]} not found in #{Script.glob}"
+      return :not_found
     end
 
     opts[:name] = Script.script_name opts[:file]
 
-    #Log.out(opts, label: %i(script of))
-
     if Script.running.find { |s| s.name.eql?(opts[:name]) } and not opts[:force]
-      return respond "--- lich: #{opts[:name]} is already running"
+      respond "--- lich: #{opts[:name]} is already running"
+      return :already_running
     end
 
     Script.new(opts) { |script|
-      runtime = SCRIPT_CONTEXT.dup
+      runtime = opts.fetch(:runtime) {SCRIPT_CONTEXT.dup}
       runtime.local_variable_set :script, script
       runtime.local_variable_set :context, runtime
       runtime.eval(script.contents, script.file_name)
@@ -247,64 +247,63 @@ class Script < Thread
                 :exit_status, :start_time, :run_time
 
   def initialize(args, &block)
-   @file_name = args[:file]
-   @name = args[:name]
-   @vars = case args[:args]
+    @file_name = args[:file]
+    @name = args[:name]
+    @vars = case args[:args]
       when Array
-         args[:args]
+        args[:args]
       when String
-         if args[:args].empty?
+        if args[:args].empty?
             []
-         else
+        else
             [args[:args]].concat(args[:args]
-               .scan(/[^\s"]*(?<!\\)"(?:\\"|[^"])+(?<!\\)"[^\s]*|(?:\\"|[^"\s])+/)
-               .collect { |s| s.gsub(/(?<!\\)"/,'')
-               .gsub('\\"', '"') })
-         end
-      else
-         []
-      end
-   @quiet = args.fetch(:quiet, false)
-   @downstream_buffer = LimitedArray.new
-   @want_downstream = true
-   @want_downstream_xml = false
-   @want_script_output = false
-   @upstream_buffer = LimitedArray.new
-   @want_upstream = false
-   @unique_buffer = LimitedArray.new
-   @watchfor = Hash.new
-   @at_exit_procs = []
-   @die_with = []
-   @hidden = false
-   @no_pause_all = false
-   @no_kill_all = false
-   @silent = false
-   @safe = false
-   @paused = false
-   @no_echo = false
-   @thread_group = ThreadGroup.new
-   @start_time = Time.now.to_i
-   @run_time = 0
-   @exit_status = nil
-   @@running.push(self)
-   @thread_group.add(self)
-   super {
-     self[:name]   = @name
-     self.priority = 1
-     self.run_time = Benchmark.realtime {
-        begin
-          respond("--- lich: #{self.name} active.") unless self.quiet
-          @value = yield(self)
-          @exit_status = :ok if @exit_status.nil?
-        rescue => e
-          respond e
-          respond e.backtrace
-          @exit_status = :err
-        ensure
-          script.kill()
+              .scan(/[^\s"]*(?<!\\)"(?:\\"|[^"])+(?<!\\)"[^\s]*|(?:\\"|[^"\s])+/)
+              .collect { |s| s.gsub(/(?<!\\)"/,'')
+              .gsub('\\"', '"') })
         end
-     }
-   }
+      else
+        []
+      end
+    @quiet = args.fetch(:quiet, false)
+    @downstream_buffer = LimitedArray.new
+    @want_downstream = true
+    @want_downstream_xml = false
+    @want_script_output = false
+    @upstream_buffer = LimitedArray.new
+    @want_upstream = false
+    @unique_buffer = LimitedArray.new
+    @watchfor = Hash.new
+    @at_exit_procs = []
+    @die_with = []
+    @hidden = false
+    @no_pause_all = false
+    @no_kill_all = false
+    @silent = false
+    @paused = false
+    @no_echo = false
+    @thread_group = ThreadGroup.new
+    @start_time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+    @exit_status = nil
+    @@running.push(self)
+    @thread_group.add(self)
+    super {
+      self.priority = 1
+      begin
+        respond("--- lich: #{self.name} active.") unless self.quiet
+        @value       = yield(self)
+        @exit_status = :ok if @exit_status.nil?
+      rescue => e
+        respond e
+        respond e.backtrace
+        @exit_status = :err
+      ensure
+        script.kill()
+      end
+    }
+  end
+
+  def uptime()
+    Format.time(Process.clock_gettime(Process::CLOCK_MONOTONIC) - start_time)
   end
 
   def before_shutdown()
@@ -325,11 +324,14 @@ class Script < Thread
       respond e
       respond e.backtrace
     ensure
-      respond("--- lich: #{self.name} exiting with status: #{@exit_status} in #{Format.time(self.run_time)}")
       @@running.delete(self)
-      (@thread_group.list + self.child_threads).each {|child|
-        respond child
-        child.kill unless child.is_a?(Script)
+      # all Thread created by this script
+      resources = @thread_group.list + self.child_threads
+      resources.each {|child|
+        unless child.is_a?(Script)
+          child.dispose
+          Thread.kill(child)
+        end
       }
       self.dispose()
     end
@@ -342,10 +344,6 @@ class Script < Thread
 
   def script
     self
-  end
-
-  def child_threads()
-    Thread.list.select {|thread| thread.parent.eql? self }
   end
 
   def db()
@@ -370,19 +368,14 @@ class Script < Thread
   end
 
   def kill()
-    begin
-      @exit_status = :killed if @exit_status.nil?
-      self.before_shutdown()
-    rescue => exception
-      pp exception
-    ensure
-      self.dispose()
-      super
-    end
+    return unless @@running.include?(self)
+    @exit_status = :killed if @exit_status.nil?
+    self.before_shutdown()
+    respond("--- lich: #{self.name} exiting with status: #{@exit_status} in #{self.uptime}")
+    super
   end
 
   def kill_tree()
-    #Log.out({this: self.name, parent: self.parent.name}, label: %i(script kill))
     GLOBAL_SCRIPT_LOCK.synchronize {
       @@lock_holder = self
       self.kill()
@@ -392,18 +385,18 @@ class Script < Thread
   end
 
   def at_exit(&block)
-     if block
-        @at_exit_procs.push(block)
-        return true
-     else
-        respond '--- warning: Script.at_exit called with no code block'
-        return false
-     end
+    if block
+      @at_exit_procs.push(block)
+      return true
+    else
+      respond '--- warning: Script.at_exit called with no code block'
+      return false
+    end
   end
 
   def clear_exit_procs
-     @at_exit_procs.clear
-     true
+    @at_exit_procs.clear
+    true
   end
 
   def exit(status = 0)
@@ -417,39 +410,39 @@ class Script < Thread
   end
 
   def has_thread?(t)
-     @thread_group.list.include?(t)
+    @thread_group.list.include?(t)
   end
 
   def pause
-     respond "--- lich: #{@name} paused."
-     @paused = true
+    respond "--- lich: #{@name} paused."
+    @paused = true
   end
 
   def unpause
-     respond "--- lich: #{@name} unpaused."
-     @paused = false
+    respond "--- lich: #{@name} unpaused."
+    @paused = false
   end
 
   def paused?
-   @paused == true
+    @paused == true
   end
 
   def clear
-     to_return = @downstream_buffer.dup
-     @downstream_buffer.clear
-     to_return
+    to_return = @downstream_buffer.dup
+    @downstream_buffer.clear
+    to_return
   end
 
   def gets
-     # fixme: no xml gets
-     if @want_downstream or @want_downstream_xml or @want_script_output
-        sleep 0.05 while @downstream_buffer.empty?
-        @downstream_buffer.shift
-     else
-        echo 'this script is set as unique but is waiting for game data...'
-        sleep 2
-        false
-     end
+    # fixme: no xml gets
+    if @want_downstream or @want_downstream_xml or @want_script_output
+      sleep 0.05 while @downstream_buffer.empty?
+      @downstream_buffer.shift
+    else
+      echo 'this script is set as unique but is waiting for game data...'
+      sleep 2
+      false
+    end
   end
 
   def gets?
@@ -467,36 +460,32 @@ class Script < Thread
   end
 
   def upstream_gets
-     sleep 0.05 while @upstream_buffer.empty?
-     @upstream_buffer.shift
+    sleep 0.05 while @upstream_buffer.empty?
+    @upstream_buffer.shift
   end
 
   def upstream_gets?
-     if @upstream_buffer.empty?
-        nil
-     else
-        @upstream_buffer.shift
-     end
+    if @upstream_buffer.empty?
+      nil
+    else
+      @upstream_buffer.shift
+    end
   end
 
   def unique_gets
-     sleep 0.05 while @unique_buffer.empty?
-     @unique_buffer.shift
+    sleep 0.05 while @unique_buffer.empty?
+    @unique_buffer.shift
   end
 
   def unique_gets?
-     if @unique_buffer.empty?
-        nil
-     else
-        @unique_buffer.shift
-     end
-  end
-
-  def safe?
-     @safe
+    if @unique_buffer.empty?
+      nil
+    else
+      @unique_buffer.shift
+    end
   end
 
   def feedme_upstream
-     @want_upstream = !@want_upstream
+    @want_upstream = !@want_upstream
   end
 end
