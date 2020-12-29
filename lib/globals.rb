@@ -1,5 +1,10 @@
 def hide_me(*args); :noop; end;
 
+def undo_before_dying
+  # todo: add deprecation warning
+  Script.clear_exit_procs
+end
+
 def toggle_upstream
    unless script = Script.current then echo 'toggle_upstream: cannot identify calling script.'; return nil; end
    script.want_upstream = !script.want_upstream
