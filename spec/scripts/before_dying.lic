@@ -1,6 +1,5 @@
 $at_exit_called = false
 Script.current.at_exit {
-  pp Script.current
   Script.current or fail Exception.new "Script.current not available in at_exit"
   respond ":at_exit"
   $at_exit_called = true

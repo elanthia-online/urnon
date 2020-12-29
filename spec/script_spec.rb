@@ -36,7 +36,6 @@ describe Script do
     sleeper.kill
     expect(Script.list).to_not include(sleeper)
     output = game_output
-    pp output
     expect(output).to include(%[sleep exiting with status: killed in])
   end
 

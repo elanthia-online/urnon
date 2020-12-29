@@ -322,7 +322,6 @@ class Script < Thread
 
   def before_shutdown()
     begin
-      pp Thread.current
       at_exit_procs.each(&:call)
       # ensure sub-scripts are kills
       @die_with.each { |script_name|
