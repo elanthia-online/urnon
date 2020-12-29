@@ -110,6 +110,8 @@ if account
      character: argv.character}.merge(account_info))
 end
 
+$frontend = argv.frontend || "profanity"
+
 # use env variables so they are not in logs
 ENV["PASSWORD"] or argv.password or fail Exception, "env variable PASSWORD is required"
 ENV["ACCOUNT"]  or argv.account or fail Exception, "env variable ACCOUNT is required"
@@ -160,6 +162,11 @@ detachable_client_thread = Thread.new {
           {character: argv.character, port: port}.to_json)
         $_DETACHABLE_CLIENT_ = SynchronizedSocket.new(server.accept)
         $_DETACHABLE_CLIENT_.sync = true
+        if $frontend.eql?("sf")
+          Game.handshake.each {|line|
+            $_DETACHABLE_CLIENT_.puts(line)
+          }
+        end
       rescue
           Lich.log "#{$!}\n\t#{$!.backtrace.join("\n\t")}"
           server.close rescue nil
