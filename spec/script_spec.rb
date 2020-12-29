@@ -68,8 +68,9 @@ describe Script do
     expect(Script.start("sleep")).to eq(:already_running)
   end
 
-  it "Script.run / before_dying" do
+  it "Script.kill / before_dying" do
     script = Script.start("before_dying")
+    # wait until the script has done some work
     sleep 0.1 until script.status.eql?("sleep")
     expect(script.at_exit_procs.size).to eq(1)
     script.kill
