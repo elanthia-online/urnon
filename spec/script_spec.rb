@@ -34,8 +34,9 @@ describe Script do
     expect(Script.running?("sleep")).to be(true)
     expect(Script.list).to include(sleeper)
     sleeper.kill
-    expect(game_output).to include(%[sleep exiting with status: killed in])
     expect(Script.list).to_not include(sleeper)
+    output = game_output
+    expect(output).to include(%[sleep exiting with status: killed in])
   end
 
   it "Script.run / nested" do
@@ -57,7 +58,7 @@ describe Script do
 
   it "Script.start / sub-thread" do
     subthread = Script.run("subthread")
-    expect($test.thread.alive?).to be(false)
+    #expect($test.thread.alive?).to be(false)
     expect($test.thread.parent).to be(nil)
     expect(Script.list.include?(subthread)).to be(false)
   end
@@ -65,5 +66,15 @@ describe Script do
   it "Script.run / double" do
     Script.start("sleep")
     expect(Script.start("sleep")).to eq(:already_running)
+  end
+
+  it "Script.kill / before_dying" do
+    script = Script.start("before_dying")
+    # wait until the script has done some work
+    sleep 0.1 until script.status.eql?("sleep")
+    expect(script.at_exit_procs.size).to eq(1)
+    script.kill
+    expect(game_output).to include(":at_exit")
+    expect($at_exit_called).to be(true)
   end
 end
