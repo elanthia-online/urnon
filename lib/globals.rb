@@ -2214,7 +2214,7 @@ def report_errors(&block)
 end
 
 def before_dying(&code)
-   Script.at_exit(&code)
+   Script.current.at_exit(&code)
 end
 
 def force_start_script(script_name,cli_vars=[], flags={})

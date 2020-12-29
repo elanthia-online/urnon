@@ -2,9 +2,10 @@
 module Settings
   @settings    = Hash.new
   @md5_at_load = Hash.new
-  @mutex     ||= Mutex.new
+  @mutex       = Mutex.new
 
-  @autosave  ||= Thread.new {
+  Thread.new {
+    self[:name] = "settings:save"
     loop {
       begin
         sleep 10
@@ -17,8 +18,8 @@ module Settings
   }
 
   def self.get(scope)
+    settings = {}
     Script.current do |script|
-      return {} unless script
       @mutex.synchronize {
         unless @settings[script.name] and @settings[script.name][scope]
           begin
@@ -48,18 +49,17 @@ module Settings
           @md5_at_load[script.name][scope] = Digest::MD5.hexdigest(@settings[script.name][scope].to_s)
         end
       }
-      @settings.dig(script.name, scope) || {}
+      settings = @settings[script.name][scope]
     end
+    return settings
   end
 
   def Settings.[](name)
-    kv = Settings.get(':') || {}
-    kv[name]
+     Settings.get(':')[name]
   end
 
   def Settings.[]=(name, value)
-    Settings.get(':')[name]
-    Settings.get(':')[name] = value
+     Settings.get(':')[name] = value
   end
 
   def Settings.load()
