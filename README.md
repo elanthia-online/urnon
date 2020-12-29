@@ -1,5 +1,7 @@
 # Cabal
 
+![rspec](https://github.com/elanthia-online/cabal/workflows/rspec/badge.svg)
+
 this project has a couple of goals:
 
 1. break [lich](https://gswiki.play.net/Horned_Cabal) into groups of files
