@@ -214,15 +214,20 @@ detachable_client_thread = Thread.new {
                 init_str = nil
             }
             while client_string = $_DETACHABLE_CLIENT_.gets
-                client_string = "#{$cmd_prefix}#{client_string}"
-                begin
-                  $_IDLETIMESTAMP_ = Time.now
-                  do_client(client_string)
-                rescue
-                  respond "--- Lich: error: client_thread: #{$!}"
-                  respond $!.backtrace.first
-                  Lich.log "error: client_thread: #{$!}\n\t#{$!.backtrace.join("\n\t")}"
-                end
+              # prevent doubling `<c><c>` from Stormfront
+              client_string = if client_string.start_with?($cmd_prefix)
+                client_string
+              else
+                "#{$cmd_prefix}#{client_string}"
+              end
+              begin
+                $_IDLETIMESTAMP_ = Time.now
+                do_client(client_string)
+              rescue
+                respond "--- Lich: error: client_thread: #{$!}"
+                respond $!.backtrace.first
+                Lich.log "error: client_thread: #{$!}\n\t#{$!.backtrace.join("\n\t")}"
+              end
             end
           rescue
             respond "--- Lich: error: client_thread: #{$!}"
