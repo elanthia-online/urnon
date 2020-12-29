@@ -23,7 +23,7 @@ class Script < Thread
     Script.new_downstream(line)
   end
 
-  def self.current()
+  def self._current()
     # fastest lookup possible
     return Thread.current if Thread.current.is_a?(Script)
     # second fastest lookup possible
@@ -32,6 +32,10 @@ class Script < Thread
     script = running.find {|script| script.eql?(Thread.current) }
     # else check if was launched by a script
     script = running.find {|script| script.eql?(Thread.current.parent) } if script.nil?
+  end
+
+  def self.current()
+    script = _current
     return nil if script.nil?
     sleep 0.1 while script.paused?
     return script unless block_given?
