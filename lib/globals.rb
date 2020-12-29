@@ -1319,72 +1319,72 @@ def multifput(*cmds)
 end
 
 def fput(message, *waitingfor)
-   unless script = Script.current then respond('--- fput: Unable to identify calling script.'); return false; end
-   waitingfor.flatten!
-   clear
-   put(message)
+  unless script = Script.current then respond('--- fput: Unable to identify calling script.'); return false; end
+  waitingfor.flatten!
+  clear
+  put(message)
 
-   while string = get
-      if string =~ /(?:\.\.\.wait |Wait )[0-9]+/
-         hold_up = string.slice(/[0-9]+/).to_i
-         sleep(hold_up) unless hold_up.nil?
-         clear
-         put(message)
-         next
-      elsif string =~ /^You.+struggle.+stand/
-         clear
-         fput 'stand'
-         next
-      elsif string =~ /stunned|can't do that while|cannot seem|^(?!You rummage).*can't seem|don't seem|Sorry, you may only type ahead/
-         if dead?
-            echo "You're dead...! You can't do that!"
-            sleep 1
-            script.downstream_buffer.unshift(string)
-            return false
-         elsif checkstunned
-            while checkstunned
-               sleep("0.25".to_f)
-            end
-         elsif checkwebbed
-            while checkwebbed
-               sleep("0.25".to_f)
-            end
-         elsif string =~ /Sorry, you may only type ahead/
-            sleep 1
-         else
-            sleep 0.1
-            script.downstream_buffer.unshift(string)
-            return false
-         end
-         clear
-         put(message)
-         next
+  while string = get
+    if string =~ /(?:\.\.\.wait |Wait )[0-9]+/
+      hold_up = string.slice(/[0-9]+/).to_i
+      sleep(hold_up) unless hold_up.nil?
+      clear
+      put(message)
+      next
+    elsif string =~ /^You.+struggle.+stand/
+      clear
+      fput 'stand'
+      next
+    elsif string =~ /stunned|can't do that while|cannot seem|^(?!You rummage).*can't seem|don't seem|Sorry, you may only type ahead/
+      if dead?
+        echo "You're dead...! You can't do that!"
+        sleep 1
+        script.downstream_buffer.unshift(string)
+        return false
+      elsif checkstunned
+        while checkstunned
+            sleep("0.25".to_f)
+        end
+      elsif checkwebbed
+        while checkwebbed
+            sleep("0.25".to_f)
+        end
+      elsif string =~ /Sorry, you may only type ahead/
+        sleep 1
       else
-         if waitingfor.empty?
-            script.downstream_buffer.unshift(string)
-            return string
-         else
-            if foundit = waitingfor.find { |val| string =~ /#{val}/i }
-               script.downstream_buffer.unshift(string)
-               return foundit
-            end
-            sleep 1
-            clear
-            put(message)
-            next
-         end
+        sleep 0.1
+        script.downstream_buffer.unshift(string)
+        return false
       end
-   end
+      clear
+      put(message)
+      next
+    else
+      if waitingfor.empty?
+        script.downstream_buffer.unshift(string)
+        return string
+      else
+        if foundit = waitingfor.find { |val| string =~ /#{val}/i }
+            script.downstream_buffer.unshift(string)
+            return foundit
+        end
+        sleep 1
+        clear
+        put(message)
+        next
+      end
+    end
+  end
 end
 
 def put(*messages)
-   Script.current
-   messages.each { |message| Game.puts(message) }
+  Script.current
+  messages.each { |message| Game.puts(message) }
 end
 
 def quiet_exit
-   script = Script.current
-   script.quiet = !(script.quiet)
+  script = Script.current
+  script.quiet = !(script.quiet)
 end
 
 def matchfindexact(*strings)

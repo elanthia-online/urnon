@@ -6,6 +6,7 @@ require_relative "../ext/thread"
 SCRIPT_CONTEXT = binding()
 
 class Script < Thread
+  class Shutdown < Exception; end;
   GLOBAL_SCRIPT_LOCK ||= Mutex.new
   @@running          ||= Array.new
   @@lock_holder      ||= nil
@@ -23,6 +24,10 @@ class Script < Thread
   end
 
   def self.current()
+    # fastest lookup possible
+    return Thread.current if Thread.current.is_a?(Script)
+    # second fastest lookup possible
+    return Thread.current.parent if Thread.current.parent.is_a?(Script)
     # prefer current thread
     script = running.find {|script| script.eql?(Thread.current) }
     # else check if was launched by a script
@@ -74,11 +79,7 @@ class Script < Thread
 
   def self.kill(name)
     if s = @@running.find { |i| i.name.downcase == name.downcase}
-      return s if s.nil?
-      # this handles the case where a script says `before_dying {Script.kill(<script>)}`
-      # to prevent a recursive dead-lock
-      return s.kill_tree() if @@lock_holder.nil?
-      return s.kill()      if @@lock_holder.eql?(s.parent)
+      return s.kill()
     end
   end
 
@@ -287,17 +288,30 @@ class Script < Thread
     @@running.push(self)
     @thread_group.add(self)
     super {
-      self.priority = 1
       begin
-        respond("--- lich: #{self.name} active.") unless self.quiet
-        @value       = yield(self)
-        @exit_status = :ok if @exit_status.nil?
-      rescue => e
-        respond e
-        respond e.backtrace
-        @exit_status = :err
-      ensure
-        script.kill()
+        Thread.handle_interrupt(Shutdown => :immediate) do
+          #self.priority = 1
+          respond("--- lich: #{self.name} active.") unless self.quiet
+          begin
+            @value = yield(self)
+          rescue Shutdown
+            # rescuing a special-case outside error ensures
+            # that we can run resource deallocation code
+            # inside of Script.current so things like fput still work
+            :graceful_exit
+          rescue => e
+            respond e
+            respond e.backtrace
+            @exit_status = :err
+          else
+            @exit_status = :ok if @exit_status.nil?
+          ensure
+            script.before_shutdown()
+            script.kill()
+          end
+        end
+      rescue
+        raise "BOOM"
       end
     }
   end
@@ -308,14 +322,8 @@ class Script < Thread
 
   def before_shutdown()
     begin
-      @at_exit_procs.each { |cb|
-        begin
-          cb.call()
-        rescue => e
-          respond e
-          respond e.backtrace
-        end
-      }
+      pp Thread.current
+      at_exit_procs.each(&:call)
       # ensure sub-scripts are kills
       @die_with.each { |script_name|
         Script.unsafe_kill(script_name)
@@ -324,7 +332,6 @@ class Script < Thread
       respond e
       respond e.backtrace
     ensure
-      @@running.delete(self)
       # all Thread created by this script
       resources = @thread_group.list + self.child_threads
       resources.each {|child|
@@ -333,13 +340,12 @@ class Script < Thread
           Thread.kill(child)
         end
       }
-      self.dispose()
     end
     self
   end
 
   def value()
-    super || @value
+    @value || super
   end
 
   def script
@@ -359,7 +365,7 @@ class Script < Thread
   end
 
   def inspect
-    "%s<%s>" % [self.class.name, @name]
+    "%s<%s uptime=%s value=%s>" % [self.class.name, @name, uptime, @value]
   end
 
   def status()
@@ -369,29 +375,24 @@ class Script < Thread
 
   def kill()
     return unless @@running.include?(self)
-    @exit_status = :killed if @exit_status.nil?
-    self.before_shutdown()
-    respond("--- lich: #{self.name} exiting with status: #{@exit_status} in #{self.uptime}")
+    @@running.delete(self)
+    if @exit_status.nil?
+      begin
+        self.raise(Shutdown)
+        self.join
+      rescue Shutdown
+        :ok
+      end
+      @exit_status = :killed
+    end
+    respond("--- lich: #{name} exiting with status: #{exit_status} in #{uptime}")
+    self.dispose
     super
   end
 
-  def kill_tree()
-    GLOBAL_SCRIPT_LOCK.synchronize {
-      @@lock_holder = self
-      self.kill()
-      @@lock_holder = nil
-    }
-    self
-  end
-
   def at_exit(&block)
-    if block
-      @at_exit_procs.push(block)
-      return true
-    else
-      respond '--- warning: Script.at_exit called with no code block'
-      return false
-    end
+    return @at_exit_procs << block if block_given?
+    respond '--- warning: Script.at_exit called with no code block'
   end
 
   def clear_exit_procs
