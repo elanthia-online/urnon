@@ -5,8 +5,11 @@ source "https://rubygems.org"
 git_source(:github) {|repo_name| "https://github.com/#{repo_name}" }
 
 gem "sqlite3", "~> 1.4"
-gem "gtk3"
 gem "xdg"
+
+group :gui do
+  gem "gtk3"
+end
 
 group :development do
   gem 'guard'
