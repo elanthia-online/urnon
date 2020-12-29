@@ -17,5 +17,4 @@ jobs:
     - name: Install dependencies
       run: bundle install --without gui
     - name: Run Rspec Tests
-      run: |
-        rspec
+      run: rspec --format doc
