@@ -6,7 +6,16 @@ require_relative "../ext/thread"
 SCRIPT_CONTEXT = binding()
 
 class Script < Thread
+  # special Exception to gracefully exit
+  # a script instance
   class Shutdown < Exception; end;
+  # internal script status codes
+  class Status
+    Err    = :err
+    Ok     = :ok
+    Killed = :killed
+  end
+  # global scripting lock
   GLOBAL_SCRIPT_LOCK ||= Mutex.new
   @@running          ||= Array.new
   @@lock_holder      ||= nil
@@ -284,6 +293,7 @@ class Script < Thread
     @no_pause_all = false
     @no_kill_all = false
     @silent = false
+    @shutdown = false
     @paused = false
     @no_echo = false
     @thread_group = ThreadGroup.new
@@ -292,30 +302,26 @@ class Script < Thread
     @@running.push(self)
     @thread_group.add(self)
     super {
-      begin
-        Thread.handle_interrupt(Shutdown => :immediate) do
-          #self.priority = 1
-          respond("--- lich: #{self.name} active.") unless self.quiet
-          begin
-            @value = yield(self)
-          rescue Shutdown
-            # rescuing a special-case outside error ensures
-            # that we can run resource deallocation code
-            # inside of Script.current so things like fput still work
-            :graceful_exit
-          rescue => e
-            respond e
-            respond e.backtrace
-            @exit_status = :err
-          else
-            @exit_status = :ok if @exit_status.nil?
-          ensure
-            script.before_shutdown()
-            script.kill()
-          end
+      self.priority = 1
+      Thread.handle_interrupt(Shutdown => :immediate) do
+        respond("--- lich: #{self.name} active.") unless self.quiet
+        begin
+          @value = yield(self)
+        rescue Shutdown
+          # rescuing a special-case outside error ensures
+          # that we can run resource deallocation code
+          # inside of Script.current so things like fput still work
+          :graceful_exit
+        rescue Exception => e
+          respond e
+          respond e.backtrace
+          @exit_status = Status::Err
+        else
+          @exit_status = Status::Ok if @exit_status.nil?
+        ensure
+          script.before_shutdown()
+          script.kill()
         end
-      rescue
-        raise "BOOM"
       end
     }
   end
@@ -326,15 +332,12 @@ class Script < Thread
 
   def before_shutdown()
     begin
+      @shutdown = true
       at_exit_procs.each(&:call)
       # ensure sub-scripts are kills
       @die_with.each { |script_name|
         Script.unsafe_kill(script_name)
       }
-    rescue => e
-      respond e
-      respond e.backtrace
-    ensure
       # all Thread created by this script
       resources = @thread_group.list + self.child_threads
       resources.each {|child|
@@ -343,6 +346,9 @@ class Script < Thread
           Thread.kill(child)
         end
       }
+    rescue => e
+      respond e
+      respond e.backtrace
     end
     self
   end
@@ -377,20 +383,32 @@ class Script < Thread
   end
 
   def kill()
+    return if @_halting.eql? true
     return unless @@running.include?(self)
-    @@running.delete(self)
-    if @exit_status.nil?
-      begin
+    @_halting = true
+    begin
+      # shutdown gracefully
+      unless @shutdown
+        @exit_status = Status::Killed unless @exit_status
         self.raise(Shutdown)
-        self.join
-      rescue Shutdown
-        :ok
+        self.join(60) # 1 minute timeout
       end
-      @exit_status = :killed
+    rescue Shutdown
+      :ok
+    ensure
+      _sitrep()
+      self.dispose
+      # remove from running at the last possible moment
+      # so all runtime apis are still available
+      @@running.delete(self)
+      super
     end
+  end
+
+  def _sitrep()
+    return if @_reported
+    @_reported = true
     respond("--- lich: #{name} exiting with status: #{exit_status} in #{uptime}")
-    self.dispose
-    super
   end
 
   def at_exit(&block)
