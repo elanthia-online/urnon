@@ -1,8 +1,9 @@
 $at_exit_called = false
 Script.current.at_exit {
-  Script.current or fail Exception.new "Script.current not available in at_exit"
-  respond ":at_exit"
+  Script.current or fail Exception, "Script.current not available in at_exit"
+  #pp "before_dying/at_exit at_exit_called=%s" % $at_exit_called
   $at_exit_called = true
+  #pp "before_dying/at_exit at_exit_called=%s" % $at_exit_called
 }
 
 sleep
