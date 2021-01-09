@@ -48,7 +48,7 @@ GEM
       rspec (>= 2.99.0, < 4.0)
     libnotify (0.9.4)
       ffi (>= 1.0.11)
-    listen (3.3.3)
+    listen (3.4.0)
       rb-fsevent (~> 0.10, >= 0.10.3)
       rb-inotify (~> 0.9, >= 0.9.10)
     lumberjack (1.2.8)
@@ -72,19 +72,19 @@ GEM
       rspec-core (~> 3.10.0)
       rspec-expectations (~> 3.10.0)
       rspec-mocks (~> 3.10.0)
-    rspec-core (3.10.0)
+    rspec-core (3.10.1)
       rspec-support (~> 3.10.0)
     rspec-expectations (3.10.1)
       diff-lcs (>= 1.2.0, < 2.0)
       rspec-support (~> 3.10.0)
-    rspec-mocks (3.10.0)
+    rspec-mocks (3.10.1)
       diff-lcs (>= 1.2.0, < 2.0)
       rspec-support (~> 3.10.0)
     rspec-support (3.10.1)
     shellany (0.0.1)
     sqlite3 (1.4.2)
     thor (1.0.1)
-    xdg (4.5.0)
+    xdg (5.0.0)
 
 PLATFORMS
   ruby
@@ -100,4 +100,4 @@ DEPENDENCIES
   xdg
 
 BUNDLED WITH
-   2.1.4
+   2.2.3

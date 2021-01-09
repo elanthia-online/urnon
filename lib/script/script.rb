@@ -6,9 +6,7 @@ require_relative "../ext/thread"
 SCRIPT_CONTEXT = binding()
 
 class Script < Thread
-  # special Exception to gracefully exit
-  # a script instance
-  class Shutdown < Exception; end;
+  class Shutdown < StandardError; end;
   # internal script status codes
   class Status
     Err    = :err
@@ -91,8 +89,10 @@ class Script < Thread
   end
 
   def self.kill(name)
-    if s = @@running.find { |i| i.name.downcase == name.downcase}
-      return s.kill()
+    return name.halt if name.is_a?(Script)
+    if s = @@running.find { |i| i.name.downcase == name.downcase }
+      s.halt
+      sleep 0.1 while s.status.is_a?(String)
     end
   end
 
@@ -156,8 +156,8 @@ class Script < Thread
                     sleep 0.011 until Script.current
                     begin
                        action.call
-                    rescue
-                       echo "watchfor error: #{$!}"
+                    rescue => e
+                       print_error(e)
                     end
                  }
                  script.thread_group.add(new_thread)
@@ -179,8 +179,8 @@ class Script < Thread
         Dir.mkdir("#{LICH_DIR}/logs") unless File.exists?("#{LICH_DIR}/logs")
         File.open("#{LICH_DIR}/logs/#{script.name}.log", 'a') { |f| f.puts data }
         true
-     rescue
-        respond "--- lich: error: Script.log: #{$!}"
+     rescue => e
+        print_error(e)
         false
      end
   end
@@ -249,7 +249,8 @@ class Script < Thread
 
   attr_reader :name, :vars, :safe,
               :file_name, :at_exit_procs,
-              :thread_group
+              :thread_group, :_value, :shutdown,
+              :exit_status, :start_time, :run_time
 
   attr_accessor :quiet, :no_echo, :paused,
                 :hidden, :silent,
@@ -257,8 +258,7 @@ class Script < Thread
                 :want_upstream, :want_script_output,
                 :no_pause_all, :no_kill_all,
                 :downstream_buffer, :upstream_buffer, :unique_buffer,
-                :die_with, :watchfor, :command_line, :ignore_pause,
-                :exit_status, :start_time, :run_time
+                :die_with, :watchfor, :command_line, :ignore_pause
 
   def initialize(args, &block)
     @file_name = args[:file]
@@ -287,6 +287,7 @@ class Script < Thread
     @want_upstream = false
     @unique_buffer = LimitedArray.new
     @watchfor = Hash.new
+    @_value = :unknown
     @at_exit_procs = []
     @die_with = []
     @hidden = false
@@ -302,28 +303,37 @@ class Script < Thread
     @@running.push(self)
     @thread_group.add(self)
     super {
-      self.priority = 1
-      Thread.handle_interrupt(Shutdown => :immediate) do
-        respond("--- lich: #{self.name} active.") unless self.quiet
+      #self.priority = 1
+      Thread.handle_interrupt(Script::Shutdown => :never) do
         begin
-          @value = yield(self)
-        rescue Shutdown
-          # rescuing a special-case outside error ensures
-          # that we can run resource deallocation code
-          # inside of Script.current so things like fput still work
-          :graceful_exit
-        rescue Exception => e
-          respond e
-          respond e.backtrace
-          @exit_status = Status::Err
-        else
-          @exit_status = Status::Ok if @exit_status.nil?
+          Thread.handle_interrupt(Script::Shutdown => :immediate) do
+            respond("--- lich: #{self.name} active.") unless self.quiet
+            begin
+              @_value = yield(self)
+            rescue Shutdown => e
+              @exit_status = Status::Killed
+            rescue StandardError => e
+              #pp "RESCUE:%s" % e.class.name
+              print_error(e)
+              @exit_status = Status::Err
+            else
+              @exit_status = Status::Ok if @exit_status.nil?
+            end
+          end
         ensure
-          script.before_shutdown()
-          script.kill()
+          @exit_status = Status::Killed unless @exit_status
+          @_value = nil if @_value.eql?(:unknown)
+          #puts "%s> :ensure shutdown=%s" % [self.name, self.value]
+          self.before_shutdown()
+          self.halt()
         end
       end
     }
+  end
+
+  def print_error(e)
+    respond "script:%s:error: %s" % [self.name, e.message]
+    respond "script:%s:backtrace:\n%s" % [self.name, e.backtrace.join("\n")]
   end
 
   def uptime()
@@ -335,9 +345,7 @@ class Script < Thread
       @shutdown = true
       at_exit_procs.each(&:call)
       # ensure sub-scripts are kills
-      @die_with.each { |script_name|
-        Script.unsafe_kill(script_name)
-      }
+      @die_with.each { |script_name| Script.unsafe_kill(script_name) }
       # all Thread created by this script
       resources = @thread_group.list + self.child_threads
       resources.each {|child|
@@ -346,19 +354,15 @@ class Script < Thread
           Thread.kill(child)
         end
       }
-    rescue => e
-      respond e
-      respond e.backtrace
+    rescue StandardError => e
+      print_error(e)
     end
     self
   end
 
   def value()
-    @value || super
-  end
-
-  def script
-    self
+    return @_value unless @_value.eql?(:unknown)
+    super
   end
 
   def db()
@@ -374,34 +378,37 @@ class Script < Thread
   end
 
   def inspect
-    "%s<%s uptime=%s value=%s>" % [self.class.name, @name, uptime, @value]
+    "%s<%s status=%s uptime=%s value=%s>" % [
+      self.class.name, @name,
+        self.status, uptime, @_value.inspect]
   end
 
   def status()
     return super if alive?
-    return exit_status
+    return @exit_status
   end
 
-  def kill()
-    return if @_halting.eql? true
-    return unless @@running.include?(self)
+  def script()
+    # todo: deprecate this
+    self
+  end
+
+  def halt()
+    return if @_halting
     @_halting = true
     begin
-      # shutdown gracefully
-      unless @shutdown
-        @exit_status = Status::Killed unless @exit_status
-        self.raise(Shutdown)
-        self.join(60) # 1 minute timeout
+      @exit_status = Status::Killed unless @exit_status
+      if self.alive?
+        self.raise(Script::Shutdown)
+        self.join(10) rescue nil
+        @_value = :shutdown if @_value.eql?(:unknown)
       end
-    rescue Shutdown
-      :ok
     ensure
-      _sitrep()
-      self.dispose
-      # remove from running at the last possible moment
-      # so all runtime apis are still available
       @@running.delete(self)
-      super
+      _sitrep()
+      self.dispose()
+      self.kill()
+      self
     end
   end
 
@@ -423,12 +430,12 @@ class Script < Thread
 
   def exit(status = 0)
     @exit_status = status
-    kill
+    self.halt
   end
 
   def exit!
     @at_exit_procs.clear
-    exit(1)
+    self.exit(:sigkill)
   end
 
   def has_thread?(t)

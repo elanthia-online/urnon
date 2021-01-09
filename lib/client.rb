@@ -1,7 +1,7 @@
 module Client
   def self.call(client_string)
     client_string.strip!
-    if client_string == "<c>exit"
+    if client_string == "<c>exit" or client_string == "<c>quit"
       Game.close()
       return Kernel::exit()
     end
@@ -45,11 +45,15 @@ module Client
           action = $1
           target = $2
           script = (Script.running + Script.hidden)
-            .find { |s| s.name.start_with?(target) or s.name.split("/").last.start_with?(target) }
-          
+            .find { |s|
+              s.name.start_with?(target) or s.name.split("/").last.start_with?(target)
+            }
+
           if script.nil?
             respond "--- Lich: #{target} does not appear to be running! Use ';list' or ';listall' to see what's active."
           elsif action =~ /^(?:k|kill|stop)$/
+            pp "kill %s" % script.name
+            pp script
             script.kill
           elsif action =~/^(?:p|pause)$/
             script.pause

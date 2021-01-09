@@ -1481,7 +1481,7 @@ def status_tags(onoff="none")
 end
 
 def respond(first = "", *messages)
-   Script.current
+   script = Script.current
    str = ''
    begin
       if first.class == Array
@@ -1501,14 +1501,13 @@ def respond(first = "", *messages)
       if $_DETACHABLE_CLIENT_
          $_DETACHABLE_CLIENT_.puts(str) rescue nil
       end
-   rescue
-      puts $!
-      puts $!.backtrace.first
+   rescue => e
+      script.print_error(e)
    end
 end
 
 def _respond(first = "", *messages)
-   Script.current
+   script = Script.current
    str = ''
    begin
       if first.class == Array
@@ -1523,9 +1522,8 @@ def _respond(first = "", *messages)
       if $_DETACHABLE_CLIENT_
          $_DETACHABLE_CLIENT_.puts(str) rescue nil
       end
-   rescue
-      puts $!
-      puts $!.backtrace.first
+   rescue => e
+    script.print_error(e)
    end
 end
 
