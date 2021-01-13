@@ -86,12 +86,12 @@ module Games
       def Spell.after_stance=(val)
         @@after_stance = val
       end
-      def Spell.load(filename=nil)
+      def Spell.load(filename=nil, force: false)
         Script.current
         filename = filename.is_a?(String) ? filename : File.join(DATA_DIR, "spell-list.xml")
 
         @@load_mutex.synchronize {
-          return true if @loaded
+          return true if @@loaded && !force
           begin
               spell_times = Hash.new
               # reloading spell data should not reset spell tracking...

@@ -3,7 +3,7 @@ require 'timeout'
 load 'lib/script/script.rb'
 SCRIPT_DIR = File.join(__dir__, "scripts")
 
-describe Script do
+RSpec.describe Script do
   before(:each) do
     # kill running scripts
     Script.list.each(&:kill)
@@ -90,5 +90,17 @@ describe Script do
   it "Script.run / handles errors" do
     script = Script.run("err")
     expect(script.status).to be(Script::Status::Err)
+  end
+
+  it "Script.run + internal Script.kill / top-level is fine" do
+    looper  = Script.start("tight-loop")
+    sleep 0.1
+    killer  = Script.run("killer", looper.name)
+    case killer.value
+    in {ok:}
+      ok
+    else
+      fail "unknown outcome"
+    end
   end
 end

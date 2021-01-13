@@ -3,7 +3,7 @@ require_relative "../limited-array"
 require_relative "../format"
 require_relative "../ext/thread"
 
-SCRIPT_CONTEXT = binding()
+GLOBAL_SCRIPT_CONTEXT = binding()
 
 class Script < Thread
   class Shutdown < StandardError; end;
@@ -57,6 +57,7 @@ class Script < Thread
 
   def self.run(*args)
      s = Script.of(args)
+     return s unless s.is_a?(Script)
      s.value
      return s
   end
@@ -240,7 +241,13 @@ class Script < Thread
     end
 
     Script.new(opts) { |script|
-      runtime = opts.fetch(:runtime) {SCRIPT_CONTEXT.dup}
+      runtime = opts.fetch(:runtime) {
+        if ENV["SHARED"]
+          Script::Runtime.of(Thread.current)
+        else
+          GLOBAL_SCRIPT_CONTEXT.dup
+        end
+      }
       runtime.local_variable_set :script, script
       runtime.local_variable_set :context, runtime
       runtime.eval(script.contents, script.file_name)
@@ -303,7 +310,7 @@ class Script < Thread
     @@running.push(self)
     @thread_group.add(self)
     super {
-      #self.priority = 1
+      self.priority = 1
       Thread.handle_interrupt(Script::Shutdown => :never) do
         begin
           Thread.handle_interrupt(Script::Shutdown => :immediate) do

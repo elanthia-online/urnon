@@ -52,8 +52,6 @@ module Client
           if script.nil?
             respond "--- Lich: #{target} does not appear to be running! Use ';list' or ';listall' to see what's active."
           elsif action =~ /^(?:k|kill|stop)$/
-            pp "kill %s" % script.name
-            pp script
             script.kill
           elsif action =~/^(?:p|pause)$/
             script.pause

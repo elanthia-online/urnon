@@ -24,7 +24,11 @@ module Lich
   def Lich.module_eval(*a);        nil; end
 
   def Lich.log(msg)
-    $stderr.puts "#{Time.now.strftime("%Y-%m-%d %H:%M:%S")}: #{msg}"
+    begin
+      $stderr.puts "#{Time.now.strftime("%Y-%m-%d %H:%M:%S")}: #{msg}"
+    rescue => exception
+      respond exception.message
+    end
   end
 
 

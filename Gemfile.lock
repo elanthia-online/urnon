@@ -1,3 +1,11 @@
+PATH
+  remote: .
+  specs:
+    cabal (0.1.0)
+      gtk3
+      sqlite3 (~> 1.4)
+      xdg
+
 GEM
   remote: https://rubygems.org/
   specs:
@@ -90,14 +98,12 @@ PLATFORMS
   ruby
 
 DEPENDENCIES
-  gtk3
+  cabal!
   guard
   guard-rspec
   libnotify
   pry
   rspec
-  sqlite3 (~> 1.4)
-  xdg
 
 BUNDLED WITH
    2.2.3

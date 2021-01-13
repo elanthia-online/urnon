@@ -1,4 +1,5 @@
 #!/usr/bin/env ruby
+#!/usr/bin/env ruby
 $0 = "cabal"
 $stdout.sync = true
 require 'sqlite3'
