@@ -91,47 +91,45 @@ def unpause_script(*names)
 end
 
 def fix_injury_mode
-   unless XMLData.injury_mode == 2
-      Game._puts '_injury 2'
+  unless XMLData.injury_mode == 2
+    if sess = Script.current.session
+      sess._puts '_injury 2'
       150.times { sleep 0.05; break if XMLData.injury_mode == 2 }
-   end
+    end
+  end
 end
 
 def hide_script(*args)
-   args.flatten!
-   args.each { |name|
-      if script = Script.running.find { |scr| scr.name == name }
-         script.hidden = !script.hidden
-      end
-   }
+  args.flatten!
+  args.each { |name|
+    if script = Script.running.find { |scr| scr.name == name }
+      script.hidden = !script.hidden
+    end
+  }
 end
 
 def parse_list(string)
-   string.split_as_list
+  string.split_as_list
 end
 
 def waitrt
-   wait_until { (XMLData.roundtime_end.to_f - Time.now.to_f + XMLData.server_time_offset.to_f) > 0 }
-   sleep((XMLData.roundtime_end.to_f - Time.now.to_f + XMLData.server_time_offset.to_f + 0.6).abs)
+  wait_until { (XMLData.roundtime_end.to_f - Time.now.to_f + XMLData.server_time_offset.to_f) > 0 }
+  sleep((XMLData.roundtime_end.to_f - Time.now.to_f + XMLData.server_time_offset.to_f + 0.6).abs)
 end
 
 def waitrt?
-   rt = XMLData.roundtime_end.to_f - Time.now.to_f + XMLData.server_time_offset.to_f + 0.6
-   if rt > 0
-      sleep rt
-   end
+  rt = XMLData.roundtime_end.to_f - Time.now.to_f + XMLData.server_time_offset.to_f + 0.6
+  sleep rt if rt > 0
 end
 
 def waitcastrt
-   wait_until { (XMLData.cast_roundtime_end.to_f - Time.now.to_f + XMLData.server_time_offset.to_f) > 0 }
-   sleep((XMLData.cast_roundtime_end.to_f - Time.now.to_f + XMLData.server_time_offset.to_f + 0.6).abs)
+  wait_until { (XMLData.cast_roundtime_end.to_f - Time.now.to_f + XMLData.server_time_offset.to_f) > 0 }
+  sleep((XMLData.cast_roundtime_end.to_f - Time.now.to_f + XMLData.server_time_offset.to_f + 0.6).abs)
 end
 
 def waitcastrt?
-   rt = XMLData.cast_roundtime_end.to_f - Time.now.to_f + XMLData.server_time_offset.to_f + 0.6
-   if rt > 0
-      sleep rt
-   end
+  rt = XMLData.cast_roundtime_end.to_f - Time.now.to_f + XMLData.server_time_offset.to_f + 0.6
+  sleep rt if rt > 0
 end
 
 def checkrt
@@ -1383,8 +1381,9 @@ def fput(message, *waitingfor)
 end
 
 def put(*messages)
-  Script.current
-  messages.each { |message| Game.puts(message) }
+  script = Script.current
+  return unless script.session
+  messages.each { |message| script.session.puts(message) }
 end
 
 def quiet_exit
@@ -1497,10 +1496,7 @@ def respond(first = "", *messages)
          str = str.gsub('&', '&amp;').gsub('<', '&lt;').gsub('>', '&gt;')
       end
       wait_while { XMLData.in_stream }
-      $_CLIENT_.puts(str) unless $_CLIENT_.nil?
-      if $_DETACHABLE_CLIENT_
-         $_DETACHABLE_CLIENT_.puts(str) rescue nil
-      end
+      $_DETACHABLE_CLIENT_.puts(str) rescue nil if $_DETACHABLE_CLIENT_
    rescue => e
       script.print_error(e)
    end
@@ -1518,10 +1514,7 @@ def _respond(first = "", *messages)
       messages.flatten.each { |message| str += sprintf("%s\r\n", message.to_s.chomp) }
       str.split(/\r?\n/).each { |line| Script.new_script_output(line); Buffer.update(line, Buffer::SCRIPT_OUTPUT) } # fixme: strip/separate script output?
       wait_while { XMLData.in_stream }
-      $_CLIENT_.puts(str)
-      if $_DETACHABLE_CLIENT_
-         $_DETACHABLE_CLIENT_.puts(str) rescue nil
-      end
+      $_DETACHABLE_CLIENT_.puts(str) rescue nil  if $_DETACHABLE_CLIENT_
    rescue => e
     script.print_error(e)
    end
@@ -2076,13 +2069,14 @@ def sf_to_wiz(line)
       end
       $sftowiz_multiline = nil
       if line =~ /<LaunchURL src="(.*?)" \/>/
-         $_CLIENT_.puts "\034GSw00005\r\nhttps://www.play.net#{$1}\r\n"
+         $_DETACHABLE_CLIENT_.puts "\034GSw00005\r\nhttps://www.play.net#{$1}\r\n"
       end
       if line =~ /<preset id='speech'>(.*?)<\/preset>/m
          line = line.sub(/<preset id='speech'>.*?<\/preset>/m, "#{$speech_highlight_start}#{$1}#{$speech_highlight_end}")
       end
       if line =~ /<pushStream id="thoughts"[^>]*>(?:<a[^>]*>)?([A-Z][a-z]+)(?:<\/a>)?\s*([\s\[\]\(\)A-z]+)?:(.*?)<popStream\/>/m
-         line = line.sub(/<pushStream id="thoughts"[^>]*>(?:<a[^>]*>)?[A-Z][a-z]+(?:<\/a>)?\s*[\s\[\]\(\)A-z]+:.*?<popStream\/>/m, "You hear the faint thoughts of #{$1} echo in your mind:\r\n#{$2}#{$3}")
+        line = line.sub(/<pushStream id="thoughts"[^>]*>(?:<a[^>]*>)?[A-Z][a-z]+(?:<\/a>)?\s*[\s\[\]\(\)A-z]+:.*?<popStream\/>/m,
+          "You hear the faint thoughts of #{$1} echo in your mind:\r\n#{$2}#{$3}")
       end
       if line =~ /<pushStream id="voln"[^>]*>\[Voln \- (?:<a[^>]*>)?([A-Z][a-z]+)(?:<\/a>)?\]\s*(".*")[\r\n]*<popStream\/>/m
          line = line.sub(/<pushStream id="voln"[^>]*>\[Voln \- (?:<a[^>]*>)?([A-Z][a-z]+)(?:<\/a>)?\]\s*(".*")[\r\n]*<popStream\/>/m, "The Symbol of Thought begins to burn in your mind and you hear #{$1} thinking, #{$2}\r\n")
@@ -2116,8 +2110,8 @@ def sf_to_wiz(line)
       return nil if line.gsub("\r\n", '').length < 1
       return line
    rescue
-      $_CLIENT_.puts "--- Error: sf_to_wiz: #{$!}"
-      $_CLIENT_.puts '$_SERVERSTRING_: ' + $_SERVERSTRING_.to_s
+      $_DETACHABLE_CLIENT_.puts "--- Error: sf_to_wiz: #{$!}"
+      $_DETACHABLE_CLIENT_.puts '$_SERVERSTRING_: ' + $_SERVERSTRING_.to_s
    end
 end
 
@@ -2170,7 +2164,10 @@ def monsterbold_end
 end
 
 def do_client(*args)
-   Client.call(*args)
+  script = Script.current
+  args.each {|command|
+    Client.call(command, script.session)
+  }
 end
 
 def report_errors(&block)

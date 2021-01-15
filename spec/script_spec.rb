@@ -1,6 +1,6 @@
 require 'spec_helper'
 require 'timeout'
-load 'lib/script/script.rb'
+require 'cabal/script/script'
 SCRIPT_DIR = File.join(__dir__, "scripts")
 
 RSpec.describe Script do

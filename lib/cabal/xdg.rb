@@ -30,13 +30,21 @@ module Cabal::XDG
 
   def self.touch(file)
     file = path.join(file)
-    #pp file
     FileUtils.touch(file)
     file
   end
 
+  def self.exist?(*args)
+    File.exist? self.path.join(*args)
+  end
+
   def self.accounts()
-    Cabal::XDG.yaml("accounts") || {}
+    this = Cabal::XDG.yaml("accounts") || {}
+    return this unless block_given?
+    yield(this)
+    File.open(self.path("accounts.yaml"), 'w') { |f|
+      f.write this.to_yaml
+    }
   end
 
   def self.account_for(character)

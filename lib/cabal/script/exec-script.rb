@@ -7,18 +7,17 @@ class ExecScript < Script
       return num
     }
   end
-  
-  def self.start(contents, options={})
-    options = { :quiet => true } if options == true
-    self.new(contents, options)
+
+  def self.start(...)
+    self.new(...)
   end
 
   attr_reader :contents, :id
-  def initialize(contents, flags=Hash.new)
+  def initialize(contents, opts={})
     @id   = ExecScript.id()
     @name = "exec/#{@id}"
-    super(name: @name, file_name: @name) { |script|
-      runtime = SCRIPT_CONTEXT.dup
+    super(opts.merge({name: @name, file_name: @name})) { |script|
+      runtime = GLOBAL_SCRIPT_CONTEXT.dup
       runtime.local_variable_set :script, script
       runtime.local_variable_set :context, runtime
       runtime.eval(contents, script.name)

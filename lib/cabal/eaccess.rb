@@ -1,14 +1,29 @@
 require "openssl"
 require "socket"
+require "fileutils"
+require 'cabal/xdg'
 
 module EAccess
-  PEM = File.join(__dir__, "..", "simu.pem")
+  WORKING_FOLDER = File.join Cabal::XDG.path("eaccess")
+  FileUtils.mkdir_p(WORKING_FOLDER)
+  PEM = File.join(WORKING_FOLDER, "simu.pem")
   PACKET_SIZE = 8192
-  
-  def self.download_pem()
-    conn = self.socket()
-    File.write(EAccess::PEM, conn.peer_cert)
-    pp "wrote peer certificate to %s" % PEM
+
+  def self.pem_exist?
+    File.exist? PEM
+  end
+
+  def self.download_pem(hostname = "eaccess.play.net", port = 7910)
+    # Create an OpenSSL context
+    ctx = OpenSSL::SSL::SSLContext.new
+    # Get remote TCP socket
+    sock = TCPSocket.new(hostname, port)
+    # pass that socket to OpenSSL
+    ssl = OpenSSL::SSL::SSLSocket.new(sock, ctx)
+    # establish connection, if possible
+    ssl.connect
+    # write the .pem to disk
+    File.write(EAccess::PEM, ssl.peer_cert)
   end
 
   def self.verify_pem(conn)
@@ -17,22 +32,22 @@ module EAccess
   end
 
   def self.socket(hostname = "eaccess.play.net", port = 7910)
+    download_pem unless pem_exist?
     socket = TCPSocket.open(hostname, port)
     cert_store              = OpenSSL::X509::Store.new
     ssl_context             = OpenSSL::SSL::SSLContext.new
     ssl_context.cert_store  = cert_store
-    #ssl_context.options     = (OpenSSL::SSL::OP_NO_SSLv2 + OpenSSL::SSL::OP_NO_SSLv3)
     ssl_context.verify_mode = OpenSSL::SSL::VERIFY_PEER
-    cert_store.add_file(EAccess::PEM)
+    cert_store.add_file(EAccess::PEM) if pem_exist?
     ssl_socket = OpenSSL::SSL::SSLSocket.new(socket, ssl_context)
     ssl_socket.sync_close = true
     ssl_socket.connect
     return ssl_socket
   end
 
-  def self.auth(password:, account:, character:, game_code: "GS3")
+  def self.auth(password:, account:, character: nil, game_code: "GS3")
     conn = EAccess.socket()
-    # it is vitally important to verify self-signed certs 
+    # it is vitally important to verify self-signed certs
     # because there is no chain-of-trust for them
     EAccess.verify_pem(conn)
     conn.puts "K\n"
@@ -62,11 +77,16 @@ module EAccess
     #pp "P:response=%s" % response
     conn.puts "C\n"
     response = EAccess.read(conn)
-    #pp "C:response=%s" % response
-    char_code = response.sub(/^C\t[0-9]+\t[0-9]+\t[0-9]+\t[0-9]+[\t\n]/, '')
+    characters = response.sub(/^C\t[0-9]+\t[0-9]+\t[0-9]+\t[0-9]+[\t\n]/, '')
       .scan(/[^\t]+\t[^\t^\n]+/)
-      .find { |c| c.split("\t")[1] == character }
-      .split("\t")[0]
+      .map {|row| row.split("\t")}
+    # for doing stuff with the account
+    return yield characters if block_given?
+    char_code, _ = characters
+      .find { |row| row.last.downcase == character.downcase }
+
+    fail Exception, "%s was not present in:\n- %s" % [character, characters.map(&:last).join("\n- ")] if char_code.nil?
+
     conn.puts "L\t#{char_code}\tSTORM\n"
     response = EAccess.read(conn)
     fail Exception, response unless response =~ /^L\t/
@@ -74,7 +94,7 @@ module EAccess
     conn.close unless conn.closed?
     login_info = Hash[response.sub(/^L\tOK\t/, '')
       .split("\t")
-      .map {|kv| 
+      .map {|kv|
         k,v = kv.split("=")
         [k.downcase, v]
       }]
@@ -85,5 +105,3 @@ module EAccess
     conn.sysread(PACKET_SIZE)
   end
 end
-
-EAccess.download_pem() if ARGV.include?("--download-pem")

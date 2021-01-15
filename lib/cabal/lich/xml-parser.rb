@@ -1,89 +1,90 @@
+require 'fileutils'
+
 class XMLParser
   attr_reader :mana, :max_mana, :health, :max_health, :spirit, :max_spirit, :last_spirit, :stamina, :max_stamina, :stance_text, :stance_value, :mind_text, :mind_value, :prepared_spell, :encumbrance_text, :encumbrance_full_text, :encumbrance_value, :indicator, :injuries, :injury_mode, :room_count, :room_title, :room_description, :room_exits, :room_exits_string, :familiar_room_title, :familiar_room_description, :familiar_room_exits, :bounty_task, :injury_mode, :server_time, :server_time_offset, :roundtime_end, :cast_roundtime_end, :last_pulse, :level, :next_level_value, :next_level_text, :society_task, :stow_container_id, :name, :game, :in_stream, :player_id, :active_spells, :prompt, :current_target_ids, :current_target_id, :room_window_disabled
   attr_accessor :send_fake_tags
 
-  @@warned_deprecated_spellfront = 0
-
   include REXML::StreamListener
 
-  def initialize
-     @buffer = String.new
-     @unescape = { 'lt' => '<', 'gt' => '>', 'quot' => '"', 'apos' => "'", 'amp' => '&' }
-     @bold = false
-     @active_tags = Array.new
-     @active_ids = Array.new
-     @last_tag = String.new
-     @last_id = String.new
-     @current_stream = String.new
-     @current_style = String.new
-     @stow_container_id = nil
-     @obj_location = nil
-     @obj_exist = nil
-     @obj_noun = nil
-     @obj_before_name = nil
-     @obj_name = nil
-     @obj_after_name = nil
-     @pc = nil
-     @last_obj = nil
-     @in_stream = false
-     @player_status = nil
-     @fam_mode = String.new
-     @room_window_disabled = false
-     @wound_gsl = String.new
-     @scar_gsl = String.new
-     @send_fake_tags = false
-     @prompt = String.new
-     @nerve_tracker_num = 0
-     @nerve_tracker_active = 'no'
-     @server_time = Time.now.to_i
-     @server_time_offset = 0
-     @roundtime_end = 0
-     @cast_roundtime_end = 0
-     @last_pulse = Time.now.to_i
-     @level = 0
-     @next_level_value = 0
-     @next_level_text = String.new
-     @current_target_ids = Array.new
+  def initialize(session)
+    @session   = session
+    @buffer = String.new
+    @unescape = { 'lt' => '<', 'gt' => '>', 'quot' => '"', 'apos' => "'", 'amp' => '&' }
+    @bold = false
+    @active_tags = Array.new
+    @active_ids = Array.new
+    @last_tag = String.new
+    @last_id = String.new
+    @current_stream = String.new
+    @current_style = String.new
+    @stow_container_id = nil
+    @obj_location = nil
+    @obj_exist = nil
+    @obj_noun = nil
+    @obj_before_name = nil
+    @obj_name = nil
+    @obj_after_name = nil
+    @pc = nil
+    @last_obj = nil
+    @in_stream = false
+    @player_status = nil
+    @fam_mode = String.new
+    @room_window_disabled = false
+    @wound_gsl = String.new
+    @scar_gsl = String.new
+    @send_fake_tags = false
+    @prompt = String.new
+    @nerve_tracker_num = 0
+    @nerve_tracker_active = 'no'
+    @server_time = Time.now.to_i
+    @server_time_offset = 0
+    @roundtime_end = 0
+    @cast_roundtime_end = 0
+    @last_pulse = Time.now.to_i
+    @level = 0
+    @next_level_value = 0
+    @next_level_text = String.new
+    @current_target_ids = Array.new
 
-     @room_count = 0
-     @room_updating = false
-     @room_title = String.new
-     @room_description = String.new
-     @room_exits = Array.new
-     @room_exits_string = String.new
+    @room_count = 0
+    @room_updating = false
+    @room_title = String.new
+    @room_description = String.new
+    @room_exits = Array.new
+    @room_exits_string = String.new
 
-     @familiar_room_title = String.new
-     @familiar_room_description = String.new
-     @familiar_room_exits = Array.new
+    @familiar_room_title = String.new
+    @familiar_room_description = String.new
+    @familiar_room_exits = Array.new
 
-     @bounty_task = String.new
-     @society_task = String.new
+    @bounty_task = String.new
+    @society_task = String.new
 
-     @name = String.new
-     @game = String.new
-     @player_id = String.new
-     @mana = 0
-     @max_mana = 0
-     @health = 0
-     @max_health = 0
-     @spirit = 0
-     @max_spirit = 0
-     @last_spirit = nil
-     @stamina = 0
-     @max_stamina = 0
-     @stance_text = String.new
-     @stance_value = 0
-     @mind_text = String.new
-     @mind_value = 0
-     @prepared_spell = 'None'
-     @encumbrance_text = String.new
-     @encumbrance_full_text = String.new
-     @encumbrance_value = 0
-     @indicator = Hash.new
-     @injuries = {'back' => {'scar' => 0, 'wound' => 0}, 'leftHand' => {'scar' => 0, 'wound' => 0}, 'rightHand' => {'scar' => 0, 'wound' => 0}, 'head' => {'scar' => 0, 'wound' => 0}, 'rightArm' => {'scar' => 0, 'wound' => 0}, 'abdomen' => {'scar' => 0, 'wound' => 0}, 'leftEye' => {'scar' => 0, 'wound' => 0}, 'leftArm' => {'scar' => 0, 'wound' => 0}, 'chest' => {'scar' => 0, 'wound' => 0}, 'leftFoot' => {'scar' => 0, 'wound' => 0}, 'rightFoot' => {'scar' => 0, 'wound' => 0}, 'rightLeg' => {'scar' => 0, 'wound' => 0}, 'neck' => {'scar' => 0, 'wound' => 0}, 'leftLeg' => {'scar' => 0, 'wound' => 0}, 'nsys' => {'scar' => 0, 'wound' => 0}, 'rightEye' => {'scar' => 0, 'wound' => 0}}
-     @injury_mode = 0
+    @name = String.new
+    @game = String.new
+    @player_id = String.new
+    @mana = 0
+    @max_mana = 0
+    @health = 0
+    @max_health = 0
+    @spirit = 0
+    @max_spirit = 0
+    @last_spirit = nil
+    @stamina = 0
+    @max_stamina = 0
+    @stance_text = String.new
+    @stance_value = 0
+    @mind_text = String.new
+    @mind_value = 0
+    @prepared_spell = 'None'
+    @encumbrance_text = String.new
+    @encumbrance_full_text = String.new
+    @encumbrance_value = 0
+    @indicator = Hash.new
+    @injuries = {'back' => {'scar' => 0, 'wound' => 0}, 'leftHand' => {'scar' => 0, 'wound' => 0}, 'rightHand' => {'scar' => 0, 'wound' => 0}, 'head' => {'scar' => 0, 'wound' => 0}, 'rightArm' => {'scar' => 0, 'wound' => 0}, 'abdomen' => {'scar' => 0, 'wound' => 0}, 'leftEye' => {'scar' => 0, 'wound' => 0}, 'leftArm' => {'scar' => 0, 'wound' => 0}, 'chest' => {'scar' => 0, 'wound' => 0}, 'leftFoot' => {'scar' => 0, 'wound' => 0}, 'rightFoot' => {'scar' => 0, 'wound' => 0}, 'rightLeg' => {'scar' => 0, 'wound' => 0}, 'neck' => {'scar' => 0, 'wound' => 0}, 'leftLeg' => {'scar' => 0, 'wound' => 0}, 'nsys' => {'scar' => 0, 'wound' => 0}, 'rightEye' => {'scar' => 0, 'wound' => 0}}
+    @injury_mode = 0
 
-     @active_spells = Hash.new
+    @active_spells = Hash.new
   end
 
   def updating_room?
@@ -178,7 +179,7 @@ class XMLParser
         elsif name == 'prompt'
            @server_time = attributes['time'].to_i
            @server_time_offset = (Time.now.to_i - @server_time)
-           $_CLIENT_.puts "\034GSq#{sprintf('%010d', @server_time)}\r\n" if @send_fake_tags
+           $_DETACHABLE_CLIENT_.puts "\034GSq#{sprintf('%010d', @server_time)}\r\n" if @send_fake_tags
         elsif (name == 'compDef') or (name == 'component')
            if attributes['id'] == 'room objs'
               GameObj.clear_loot
@@ -209,7 +210,7 @@ class XMLParser
            if attributes['id'] == 'pbarStance'
               @stance_text = attributes['text'].split.first
               @stance_value = attributes['value'].to_i
-              $_CLIENT_.puts "\034GSg#{sprintf('%010d', @stance_value)}\r\n" if @send_fake_tags
+              $_DETACHABLE_CLIENT_.puts "\034GSg#{sprintf('%010d', @stance_value)}\r\n" if @send_fake_tags
            elsif attributes['id'] == 'mana'
               last_mana = @mana
               @mana, @max_mana = attributes['text'].scan(/-?\d+/).collect { |num| num.to_i }
@@ -218,27 +219,27 @@ class XMLParser
               if (difference == noded_pulse) or (difference == unnoded_pulse) or ( (@mana == @max_mana) and (last_mana + noded_pulse > @max_mana) )
                  @last_pulse = Time.now.to_i
                  if @send_fake_tags
-                    $_CLIENT_.puts "\034GSZ#{sprintf('%010d',(@mana+1))}\n"
-                    $_CLIENT_.puts "\034GSZ#{sprintf('%010d',@mana)}\n"
+                    $_DETACHABLE_CLIENT_.puts "\034GSZ#{sprintf('%010d',(@mana+1))}\n"
+                    $_DETACHABLE_CLIENT_.puts "\034GSZ#{sprintf('%010d',@mana)}\n"
                  end
               end
               if @send_fake_tags
-                 $_CLIENT_.puts "\034GSV#{sprintf('%010d%010d%010d%010d%010d%010d%010d%010d', @max_health.to_i, @health.to_i, @max_spirit.to_i, @spirit.to_i, @max_mana.to_i, @mana.to_i, @wound_gsl, @scar_gsl)}\r\n"
+                 $_DETACHABLE_CLIENT_.puts "\034GSV#{sprintf('%010d%010d%010d%010d%010d%010d%010d%010d', @max_health.to_i, @health.to_i, @max_spirit.to_i, @spirit.to_i, @max_mana.to_i, @mana.to_i, @wound_gsl, @scar_gsl)}\r\n"
               end
            elsif attributes['id'] == 'stamina'
               @stamina, @max_stamina = attributes['text'].scan(/-?\d+/).collect { |num| num.to_i }
            elsif attributes['id'] == 'mindState'
               @mind_text = attributes['text']
               @mind_value = attributes['value'].to_i
-              $_CLIENT_.puts "\034GSr#{MINDMAP[@mind_text]}\r\n" if @send_fake_tags
+              $_DETACHABLE_CLIENT_.puts "\034GSr#{MINDMAP[@mind_text]}\r\n" if @send_fake_tags
            elsif attributes['id'] == 'health'
               @health, @max_health = attributes['text'].scan(/-?\d+/).collect { |num| num.to_i }
-              $_CLIENT_.puts "\034GSV#{sprintf('%010d%010d%010d%010d%010d%010d%010d%010d', @max_health.to_i, @health.to_i, @max_spirit.to_i, @spirit.to_i, @max_mana.to_i, @mana.to_i, @wound_gsl, @scar_gsl)}\r\n" if @send_fake_tags
+              $_DETACHABLE_CLIENT_.puts "\034GSV#{sprintf('%010d%010d%010d%010d%010d%010d%010d%010d', @max_health.to_i, @health.to_i, @max_spirit.to_i, @spirit.to_i, @max_mana.to_i, @mana.to_i, @wound_gsl, @scar_gsl)}\r\n" if @send_fake_tags
            elsif attributes['id'] == 'spirit'
               @last_spirit = @spirit if @last_spirit
               @spirit, @max_spirit = attributes['text'].scan(/-?\d+/).collect { |num| num.to_i }
               @last_spirit = @spirit unless @last_spirit
-              $_CLIENT_.puts "\034GSV#{sprintf('%010d%010d%010d%010d%010d%010d%010d%010d', @max_health.to_i, @health.to_i, @max_spirit.to_i, @spirit.to_i, @max_mana.to_i, @mana.to_i, @wound_gsl, @scar_gsl)}\r\n" if @send_fake_tags
+              $_DETACHABLE_CLIENT_.puts "\034GSV#{sprintf('%010d%010d%010d%010d%010d%010d%010d%010d', @max_health.to_i, @health.to_i, @max_spirit.to_i, @spirit.to_i, @max_mana.to_i, @mana.to_i, @wound_gsl, @scar_gsl)}\r\n" if @send_fake_tags
            elsif attributes['id'] == 'nextLvlPB'
               Gift.pulse unless @next_level_text == attributes['text']
               @next_level_value = attributes['value'].to_i
@@ -249,7 +250,7 @@ class XMLParser
            end
         elsif name == 'roundTime'
            @roundtime_end = attributes['value'].to_i
-           $_CLIENT_.puts "\034GSQ#{sprintf('%010d', @roundtime_end)}\r\n" if @send_fake_tags
+           $_DETACHABLE_CLIENT_.puts "\034GSQ#{sprintf('%010d', @roundtime_end)}\r\n" if @send_fake_tags
         elsif name == 'castTime'
            @cast_roundtime_end = attributes['value'].to_i
         elsif name == 'dropDownBox'
@@ -271,19 +272,19 @@ class XMLParser
            if @send_fake_tags
               if attributes['id'] == 'IconPOISONED'
                  if attributes['visible'] == 'y'
-                    $_CLIENT_.puts "\034GSJ0000000000000000000100000000001\r\n"
+                    $_DETACHABLE_CLIENT_.puts "\034GSJ0000000000000000000100000000001\r\n"
                  else
-                    $_CLIENT_.puts "\034GSJ0000000000000000000000000000000\r\n"
+                    $_DETACHABLE_CLIENT_.puts "\034GSJ0000000000000000000000000000000\r\n"
                  end
               elsif attributes['id'] == 'IconDISEASED'
                  if attributes['visible'] == 'y'
-                    $_CLIENT_.puts "\034GSK0000000000000000000100000000001\r\n"
+                    $_DETACHABLE_CLIENT_.puts "\034GSK0000000000000000000100000000001\r\n"
                  else
-                    $_CLIENT_.puts "\034GSK0000000000000000000000000000000\r\n"
+                    $_DETACHABLE_CLIENT_.puts "\034GSK0000000000000000000000000000000\r\n"
                  end
               else
                  gsl_prompt = String.new; ICONMAP.keys.each { |icon| gsl_prompt += ICONMAP[icon] if @indicator[icon] == 'y' }
-                 $_CLIENT_.puts "\034GSP#{sprintf('%-30s', gsl_prompt)}\r\n"
+                 $_DETACHABLE_CLIENT_.puts "\034GSP#{sprintf('%-30s', gsl_prompt)}\r\n"
               end
            end
         elsif (name == 'image') and @active_ids.include?('injuries')
@@ -318,7 +319,7 @@ class XMLParser
                                 @nerve_tracker_active = 'no'
                                 @nerve_tracker_num -= 1
                                 DownstreamHook.remove('nerve_tracker') if @nerve_tracker_num < 1
-                                $_CLIENT_.puts "\034GSV#{sprintf('%010d%010d%010d%010d%010d%010d%010d%010d', @max_health.to_i, @health.to_i, @max_spirit.to_i, @spirit.to_i, @max_mana.to_i, @mana.to_i, make_wound_gsl, make_scar_gsl)}\r\n" if @send_fake_tags
+                                $_DETACHABLE_CLIENT_.puts "\034GSV#{sprintf('%010d%010d%010d%010d%010d%010d%010d%010d', @max_health.to_i, @health.to_i, @max_spirit.to_i, @spirit.to_i, @max_mana.to_i, @mana.to_i, make_wound_gsl, make_scar_gsl)}\r\n" if @send_fake_tags
                                 server_string
                              elsif server_string =~ /a case of uncontrollable convulsions/
                                 @injuries['nsys']['wound'] = 3
@@ -348,7 +349,7 @@ class XMLParser
                        }
                        @nerve_tracker_num += 1
                        DownstreamHook.add('nerve_tracker', action)
-                       Game._puts "#{$cmd_prefix}health"
+                       @session._puts "#{$cmd_prefix}health"
                     }
                  end
               else
@@ -356,7 +357,7 @@ class XMLParser
                  @injuries[attributes['id']]['scar'] = 0
               end
            end
-           $_CLIENT_.puts "\034GSV#{sprintf('%010d%010d%010d%010d%010d%010d%010d%010d', @max_health.to_i, @health.to_i, @max_spirit.to_i, @spirit.to_i, @max_mana.to_i, @mana.to_i, make_wound_gsl, make_scar_gsl)}\r\n" if @send_fake_tags
+           $_DETACHABLE_CLIENT_.puts "\034GSV#{sprintf('%010d%010d%010d%010d%010d%010d%010d%010d', @max_health.to_i, @health.to_i, @max_spirit.to_i, @spirit.to_i, @max_mana.to_i, @mana.to_i, make_wound_gsl, make_scar_gsl)}\r\n" if @send_fake_tags
         elsif name == 'compass'
            if @current_stream == 'familiar'
               @fam_mode = String.new
@@ -408,58 +409,52 @@ class XMLParser
               end
            end
         elsif (name == 'app') and (@name = attributes['char'])
-           if @game.nil? or @game.empty?
-              @game = 'unknown'
-           end
-           unless File.exists?("#{DATA_DIR}/#{@game}")
-              Dir.mkdir("#{DATA_DIR}/#{@game}")
-           end
-           unless File.exists?("#{DATA_DIR}/#{@game}/#{@name}")
-              Dir.mkdir("#{DATA_DIR}/#{@game}/#{@name}")
-           end
-           if $frontend =~ /^(?:wizard|avalon)$/
-              Game._puts "#{$cmd_prefix}_flag Display Dialog Boxes 0"
-              sleep 0.05
-              Game._puts "#{$cmd_prefix}_injury 2"
-              sleep 0.05
-              # fixme: game name hardcoded as Gemstone IV; maybe doesn't make any difference to the client
-              $_CLIENT_.puts "\034GSB0000000000#{attributes['char']}\r\n\034GSA#{Time.now.to_i.to_s}GemStone IV\034GSD\r\n"
-              # Sending fake GSL tags to the Wizard FE is disabled until now, because it doesn't accept the tags and just gives errors until initialized with the above line
-              @send_fake_tags = true
-              # Send all the tags we missed out on
-              $_CLIENT_.puts "\034GSV#{sprintf('%010d%010d%010d%010d%010d%010d%010d%010d', @max_health.to_i, @health.to_i, @max_spirit.to_i, @spirit.to_i, @max_mana.to_i, @mana.to_i, make_wound_gsl, make_scar_gsl)}\r\n"
-              $_CLIENT_.puts "\034GSg#{sprintf('%010d', @stance_value)}\r\n"
-              $_CLIENT_.puts "\034GSr#{MINDMAP[@mind_text]}\r\n"
-              gsl_prompt = String.new
-              @indicator.keys.each { |icon| gsl_prompt += ICONMAP[icon] if @indicator[icon] == 'y' }
-              $_CLIENT_.puts "\034GSP#{sprintf('%-30s', gsl_prompt)}\r\n"
-              gsl_prompt = nil
-              gsl_exits = String.new
-              @room_exits.each { |exit| gsl_exits.concat(DIRMAP[SHORTDIR[exit]].to_s) }
-              $_CLIENT_.puts "\034GSj#{sprintf('%-20s', gsl_exits)}\r\n"
-              gsl_exits = nil
-              $_CLIENT_.puts "\034GSn#{sprintf('%-14s', @prepared_spell)}\r\n"
-              $_CLIENT_.puts "\034GSm#{sprintf('%-45s', GameObj.right_hand.name)}\r\n"
-              $_CLIENT_.puts "\034GSl#{sprintf('%-45s', GameObj.left_hand.name)}\r\n"
-              $_CLIENT_.puts "\034GSq#{sprintf('%010d', @server_time)}\r\n"
-              $_CLIENT_.puts "\034GSQ#{sprintf('%010d', @roundtime_end)}\r\n" if @roundtime_end > 0
-           end
-           Game._puts("#{$cmd_prefix}_flag Display Inventory Boxes 1")
+          @game = 'unknown' if @game.nil? or @game.empty?
+          @session.register()
+          FileUtils.mkdir_p File.join(DATA_DIR, @game, @name)
+          if $frontend =~ /^(?:wizard|avalon)$/
+            @session._puts "#{$cmd_prefix}_flag Display Dialog Boxes 0"
+            sleep 0.05
+            @session._puts "#{$cmd_prefix}_injury 2"
+            sleep 0.05
+            # fixme: game name hardcoded as Gemstone IV; maybe doesn't make any difference to the client
+            $_DETACHABLE_CLIENT_.puts "\034GSB0000000000#{attributes['char']}\r\n\034GSA#{Time.now.to_i.to_s}GemStone IV\034GSD\r\n"
+            # Sending fake GSL tags to the Wizard FE is disabled until now, because it doesn't accept the tags and just gives errors until initialized with the above line
+            @send_fake_tags = true
+            # Send all the tags we missed out on
+            $_DETACHABLE_CLIENT_.puts "\034GSV#{sprintf('%010d%010d%010d%010d%010d%010d%010d%010d', @max_health.to_i, @health.to_i, @max_spirit.to_i, @spirit.to_i, @max_mana.to_i, @mana.to_i, make_wound_gsl, make_scar_gsl)}\r\n"
+            $_DETACHABLE_CLIENT_.puts "\034GSg#{sprintf('%010d', @stance_value)}\r\n"
+            $_DETACHABLE_CLIENT_.puts "\034GSr#{MINDMAP[@mind_text]}\r\n"
+            gsl_prompt = String.new
+            @indicator.keys.each { |icon| gsl_prompt += ICONMAP[icon] if @indicator[icon] == 'y' }
+            $_DETACHABLE_CLIENT_.puts "\034GSP#{sprintf('%-30s', gsl_prompt)}\r\n"
+            gsl_prompt = nil
+            gsl_exits = String.new
+            @room_exits.each { |exit| gsl_exits.concat(DIRMAP[SHORTDIR[exit]].to_s) }
+            $_DETACHABLE_CLIENT_.puts "\034GSj#{sprintf('%-20s', gsl_exits)}\r\n"
+            gsl_exits = nil
+            $_DETACHABLE_CLIENT_.puts "\034GSn#{sprintf('%-14s', @prepared_spell)}\r\n"
+            $_DETACHABLE_CLIENT_.puts "\034GSm#{sprintf('%-45s', GameObj.right_hand.name)}\r\n"
+            $_DETACHABLE_CLIENT_.puts "\034GSl#{sprintf('%-45s', GameObj.left_hand.name)}\r\n"
+            $_DETACHABLE_CLIENT_.puts "\034GSq#{sprintf('%010d', @server_time)}\r\n"
+            $_DETACHABLE_CLIENT_.puts "\034GSQ#{sprintf('%010d', @roundtime_end)}\r\n" if @roundtime_end > 0
+          end
+          @session._puts("#{$cmd_prefix}_flag Display Inventory Boxes 1")
 
-           Thread.new { 
-              begin
-                 Autostart.call
-              rescue Exception => e
-                 puts e
-                 respond e
-              end
-           }
+          Thread.new {
+            begin
+                Autostart.call(@session)
+            rescue Exception => e
+                puts e
+                respond e
+            end
+          }
 
-           if arg = ARGV.find { |a| a=~ /^\-\-start\-scripts=/ }
-              for script_name in arg.sub('--start-scripts=', '').split(',')
-                 Script.start(script_name)
-              end
-           end
+          if arg = ARGV.find { |a| a=~ /^\-\-start\-scripts=/ }
+            for script_name in arg.sub('--start-scripts=', '').split(',')
+                Script.start(script_name)
+            end
+          end
         end
      rescue
         $stdout.puts "--- error: XMLParser.tag_start: #{$!}"
@@ -468,10 +463,11 @@ class XMLParser
         reset
      end
   end
+
   def text(text_string)
      begin
         # fixme: /<stream id="Spells">.*?<\/stream>/m
-        # $_CLIENT_.write(text_string) unless ($frontend != 'suks') or (@current_stream =~ /^(?:spellfront|inv|bounty|society)$/) or @active_tags.any? { |tag| tag =~ /^(?:compDef|inv|component|right|left|spell)$/ } or (@active_tags.include?('stream') and @active_ids.include?('Spells')) or (text_string == "\n" and (@last_tag =~ /^(?:popStream|prompt|compDef|dialogData|openDialog|switchQuickBar|component)$/))
+        # $_DETACHABLE_CLIENT_.write(text_string) unless ($frontend != 'suks') or (@current_stream =~ /^(?:spellfront|inv|bounty|society)$/) or @active_tags.any? { |tag| tag =~ /^(?:compDef|inv|component|right|left|spell)$/ } or (@active_tags.include?('stream') and @active_ids.include?('Spells')) or (text_string == "\n" and (@last_tag =~ /^(?:popStream|prompt|compDef|dialogData|openDialog|switchQuickBar|component)$/))
         if @active_tags.include?('inv')
            if @active_tags[-1] == 'a'
               @obj_name = text_string
@@ -484,13 +480,13 @@ class XMLParser
            @prompt = text_string
         elsif @active_tags.include?('right')
            GameObj.new_right_hand(@obj_exist, @obj_noun, text_string)
-           $_CLIENT_.puts "\034GSm#{sprintf('%-45s', text_string)}\r\n" if @send_fake_tags
+           $_DETACHABLE_CLIENT_.puts "\034GSm#{sprintf('%-45s', text_string)}\r\n" if @send_fake_tags
         elsif @active_tags.include?('left')
            GameObj.new_left_hand(@obj_exist, @obj_noun, text_string)
-           $_CLIENT_.puts "\034GSl#{sprintf('%-45s', text_string)}\r\n" if @send_fake_tags
+           $_DETACHABLE_CLIENT_.puts "\034GSl#{sprintf('%-45s', text_string)}\r\n" if @send_fake_tags
         elsif @active_tags.include?('spell')
            @prepared_spell = text_string
-           $_CLIENT_.puts "\034GSn#{sprintf('%-14s', text_string)}\r\n" if @send_fake_tags
+           $_DETACHABLE_CLIENT_.puts "\034GSn#{sprintf('%-14s', text_string)}\r\n" if @send_fake_tags
         elsif @active_tags.include?('compDef') or @active_tags.include?('component')
            if @active_ids.include?('room objs')
               if @active_tags.include?('a')
@@ -627,6 +623,7 @@ class XMLParser
         reset
      end
   end
+
   def tag_end(name)
      begin
         if name == 'inv'
@@ -640,7 +637,7 @@ class XMLParser
         elsif @send_fake_tags and (@active_ids.last == 'room exits')
            gsl_exits = String.new
            @room_exits.each { |exit| gsl_exits.concat(DIRMAP[SHORTDIR[exit]].to_s) }
-           $_CLIENT_.puts "\034GSj#{sprintf('%-20s', gsl_exits)}\r\n"
+           $_DETACHABLE_CLIENT_.puts "\034GSj#{sprintf('%-20s', gsl_exits)}\r\n"
            gsl_exits = nil
         elsif @room_window_disabled and (name == 'compass')
 
@@ -648,7 +645,7 @@ class XMLParser
            @room_exits_string.concat " #{@room_exits.join(', ')}" unless @room_exits.empty?
            gsl_exits = String.new
            @room_exits.each { |exit| gsl_exits.concat(DIRMAP[SHORTDIR[exit]].to_s) }
-           $_CLIENT_.puts "\034GSj#{sprintf('%-20s', gsl_exits)}\r\n"
+           $_DETACHABLE_CLIENT_.puts "\034GSj#{sprintf('%-20s', gsl_exits)}\r\n"
            gsl_exits = nil
            @room_count += 1
            $room_count += 1
@@ -662,16 +659,5 @@ class XMLParser
         sleep 0.1
         reset
      end
-  end
-  # here for backwards compatibility, but spellfront xml isn't sent by the game anymore
-  def spellfront
-     if (Time.now.to_i - @@warned_deprecated_spellfront) > 300
-        @@warned_deprecated_spellfront = Time.now.to_i
-        unless script_name = Script.current.name
-           script_name = 'unknown script'
-        end
-        respond "--- warning: #{script_name} is using deprecated method XMLData.spellfront; this method will be removed in a future version of Lich"
-     end
-     @active_spells.keys
   end
 end

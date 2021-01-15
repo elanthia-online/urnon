@@ -7,7 +7,6 @@ Gem::Specification.new do |spec|
   spec.version       = Cabal::VERSION
   spec.authors       = ["Benjamin Clos"]
   spec.email         = ["benjamin.clos@gmail.com"]
-
   spec.summary       = "Gemstone IV scripting engine"
   spec.description   = "Gemstone IV scripting engine"
   spec.homepage      = "https://github.com/elanthia-online/cabal"
@@ -20,6 +19,8 @@ Gem::Specification.new do |spec|
 
   spec.add_dependency "gtk3"
   spec.add_dependency "xdg"
+  spec.add_dependency "thor"
+  spec.add_dependency "rexml"
   spec.add_dependency "sqlite3", "~> 1.4"
 
   # Specify which files should be added to the gem when it is released.

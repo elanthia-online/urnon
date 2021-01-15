@@ -1,7 +1,8 @@
 require "benchmark"
-require_relative "../limited-array"
-require_relative "../format"
-require_relative "../ext/thread"
+require "cabal/lich/limited-array"
+require "cabal/lich/format"
+require "cabal/ext/thread"
+require 'cabal/session'
 
 GLOBAL_SCRIPT_CONTEXT = binding()
 
@@ -50,17 +51,6 @@ class Script < Thread
   end
 
   def self.self(); current(); end
-
-  def self.start(*args)
-     Script.of(args)
-  end
-
-  def self.run(*args)
-     s = Script.of(args)
-     return s unless s.is_a?(Script)
-     s.value
-     return s
-  end
 
   def self.script_name(file_name)
      file_name.slice(SCRIPT_DIR.size+1..-(File.extname(file_name).size + 1))
@@ -151,19 +141,19 @@ class Script < Thread
      @@running.each { |script|
         script.downstream_buffer.push(line.chomp) if script.want_downstream
         unless script.watchfor.empty?
-           script.watchfor.each_pair { |trigger,action|
-              if line =~ trigger
-                 new_thread = Thread.new {
-                    sleep 0.011 until Script.current
-                    begin
-                       action.call
-                    rescue => e
-                       print_error(e)
-                    end
-                 }
-                 script.thread_group.add(new_thread)
-              end
-           }
+          script.watchfor.each_pair { |trigger,action|
+            if line =~ trigger
+              new_thread = Thread.new {
+                sleep 0.011 until Script.current
+                begin
+                    action.call
+                rescue => e
+                    print_error(e)
+                end
+              }
+              script.thread_group.add(new_thread)
+            end
+          }
         end
      }
   end
@@ -218,13 +208,30 @@ class Script < Thread
     Script.list.find {|script| script.name.include?(name)}
   end
 
+  def self.start(*args)
+    Script.of(args)
+  end
+
+  def self.run(*args)
+    s = Script.of(args)
+    return s unless s.is_a?(Script)
+    s.value
+    return s
+  end
+
   def self.of(args)
     opts = {}
+    session = nil
+    # prefer explicitly passed
+    session = args.pop if args.last.is_a?(Cabal::Session)
+    # inherit if not explicitly passed
+    session = Script.current.session if Script.current && Script.current.session.is_a?(Cabal::Session) && session.nil?
     (name, scriptv, kwargs) = args
     opts.merge!(kwargs) if kwargs.is_a?(Hash)
     opts[:name] = name
     opts[:file] = Script.match(opts[:name]).first
     opts[:args] = scriptv
+    opts[:session] = session
 
     opts.merge!(scriptv) if scriptv.is_a?(Hash)
 
@@ -257,7 +264,8 @@ class Script < Thread
   attr_reader :name, :vars, :safe,
               :file_name, :at_exit_procs,
               :thread_group, :_value, :shutdown,
-              :exit_status, :start_time, :run_time
+              :exit_status, :start_time, :run_time,
+              :session
 
   attr_accessor :quiet, :no_echo, :paused,
                 :hidden, :silent,
@@ -270,6 +278,7 @@ class Script < Thread
   def initialize(args, &block)
     @file_name = args[:file]
     @name = args[:name]
+    @session = args[:session]
     @vars = case args[:args]
       when Array
         args[:args]
