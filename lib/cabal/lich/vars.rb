@@ -1,3 +1,5 @@
+require 'cabal/session'
+
 module Vars
   @@vars   = Hash.new
   md5      = nil
@@ -7,7 +9,7 @@ module Vars
      mutex.synchronize {
         unless @@loaded
            begin
-              h = Lich.db.get_first_value('SELECT hash FROM uservars WHERE scope=?;', "#{XMLData.game}:#{XMLData.name}".encode('UTF-8'))
+              h = Lich.db.get_first_value('SELECT hash FROM uservars WHERE scope=?;', "#{Session.current.xml_data.game}:#{Session.current.xml_data.name}".encode('UTF-8'))
            rescue SQLite3::BusyException
               sleep 0.1
               retry
@@ -34,7 +36,7 @@ module Vars
               md5 = Digest::MD5.hexdigest(@@vars.to_s)
               blob = SQLite3::Blob.new(Marshal.dump(@@vars))
               begin
-                 Lich.db.execute('INSERT OR REPLACE INTO uservars(scope,hash) VALUES(?,?);', "#{XMLData.game}:#{XMLData.name}".encode('UTF-8'), blob)
+                 Lich.db.execute('INSERT OR REPLACE INTO uservars(scope,hash) VALUES(?,?);', "#{Session.current.xml_data.game}:#{Session.current.xml_data.name}".encode('UTF-8'), blob)
               rescue SQLite3::BusyException
                  sleep 0.1
                  retry

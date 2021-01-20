@@ -7,6 +7,8 @@ RSpec.describe Script do
   before(:each) do
     # kill running scripts
     Script.list.each(&:kill)
+    @session = Cabal::Session.new("127.0.0.1", 8020, 8040)
+    @session.set_socks client: StringIO.new
     # cleanup game output
     game_output
   end
@@ -102,5 +104,11 @@ RSpec.describe Script do
     else
       fail "unknown outcome"
     end
+  end
+
+  it "Script / Runtime" do
+    scope = Script.run("scope", session: @session)
+    pp "value = %s" % scope.value
+    expect(@session.client_sock.string).to include "Scope#thing"
   end
 end

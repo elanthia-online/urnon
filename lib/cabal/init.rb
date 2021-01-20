@@ -28,8 +28,6 @@ require("cabal/lich/room")
 require("cabal/lich/settings")
 require("cabal/lich/char-settings")
 require("cabal/lich/format")
-require("cabal/lich/globals")
-require("cabal/lich/buffer")
 require("cabal/lich/shared-buffer")
 require("cabal/lich/spell-ranks")
 require("cabal/lich/spell")
@@ -39,8 +37,7 @@ require("cabal/lich/settings")
 require("cabal/lich/spell-song")
 require("cabal/lich/duplicate-defs")
 require("cabal/lich/gtk3")
-# method aliases for legacy APIs
-require("cabal/lich/aliases")
+
 # - Migrated Lich Utils
 require("cabal/session") # was Game
 # - lich script inter-dependency manager
@@ -76,7 +73,6 @@ module Cabal
     # use env variables so they are not in logs
     ENV["PASSWORD"] or argv.password or fail Exception, "PASSWORD is required"
 
-
     login_info = EAccess.auth(
       account:   ENV["ACCOUNT"]  || argv.account,
       password:  ENV["PASSWORD"] || argv.password,
@@ -89,20 +85,12 @@ module Cabal
       login_info["gamehost"],
       login_info["gameport"],
       argv.port)
-    # TODO: remove global XMLData spaghetti
-    Object.const_set("XMLData", session.xml_data)
-
-    session.handshake(login_info["key"])
-
-    $login_time = Time.now
+    session.init(login_info["key"])
     Thread.current.priority = -10
     Gtk.main
-    wait_until {session.closed?}
+    Script.list.each { |script| script.kill if script.session.eql?(session) }
     session.client_thread.kill rescue nil
-    Script.running.each { |script| script.kill }
-    Script.hidden.each { |script| script.kill }
-    Settings.save
-    Vars.save
     session.close
+    wait_until {session.closed?}
   end
 end

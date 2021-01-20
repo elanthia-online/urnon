@@ -8,10 +8,11 @@ class UpstreamHook
      end
      @@upstream_hooks[name] = [action, session]
   end
-  def UpstreamHook.run(client_string)
+  def UpstreamHook.run(client_string, current_session)
      for key in @@upstream_hooks.keys
       begin
         (hook, session) = @@upstream_hooks[key]
+        next unless session == current_session
         case hook.arity
         when 1
           client_string = hook.call(client_string)

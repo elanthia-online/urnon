@@ -1,3 +1,4 @@
+require 'cabal/session'
 
 module Settings
   @settings    = Hash.new
@@ -71,7 +72,7 @@ module Settings
   end
 
   def Settings.char
-     Settings.get("#{XMLData.game}:#{XMLData.name}")
+     Settings.get("#{Session.current.xml_data.game}:#{Session.current.xml_data.name}")
   end
 
   def Settings.save()

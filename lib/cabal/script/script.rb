@@ -3,6 +3,7 @@ require "cabal/lich/limited-array"
 require "cabal/lich/format"
 require "cabal/ext/thread"
 require 'cabal/session'
+require 'cabal/script/runtime'
 
 GLOBAL_SCRIPT_CONTEXT = binding()
 
@@ -190,7 +191,7 @@ class Script < Thread
      if script = Script.current
         script.clear_exit_procs
      else
-        respond "--- lich: error: Script.clear_exit_procs: can't identify calling script"
+        respond "--- cabal: error: Script.clear_exit_procs: can't identify calling script"
         return false
      end
   end
@@ -199,7 +200,7 @@ class Script < Thread
      if script = Script.current
         script.exit!
      else
-        respond "--- lich: error: Script.exit!: can't identify calling script"
+        respond "--- cabal: error: Script.exit!: can't identify calling script"
         return false
      end
   end
@@ -208,24 +209,27 @@ class Script < Thread
     Script.list.find {|script| script.name.include?(name)}
   end
 
-  def self.start(*args)
-    Script.of(args)
+  def self.start(*args, session: nil)
+    Script.of(args, session: session)
   end
 
-  def self.run(*args)
-    s = Script.of(args)
+  def self.run(*args, session: nil)
+    s = Script.of(args, session: session)
     return s unless s.is_a?(Script)
     s.value
     return s
   end
 
-  def self.of(args)
+  def self.runtime
+    runtime = GLOBAL_SCRIPT_CONTEXT.dup
+  end
+
+  def self.of(args, session: nil)
     opts = {}
-    session = nil
-    # prefer explicitly passed
-    session = args.pop if args.last.is_a?(Cabal::Session)
+
     # inherit if not explicitly passed
-    session = Script.current.session if Script.current && Script.current.session.is_a?(Cabal::Session) && session.nil?
+    session = Script.current.session if session.nil? && Script.current && Script.current.session.is_a?(Cabal::Session)
+
     (name, scriptv, kwargs) = args
     opts.merge!(kwargs) if kwargs.is_a?(Hash)
     opts[:name] = name
@@ -233,30 +237,25 @@ class Script < Thread
     opts[:args] = scriptv
     opts[:session] = session
 
+    raise ArgumentError, "could not start Script(%s) without a Session" % opts[:name] if session.nil?
+
     opts.merge!(scriptv) if scriptv.is_a?(Hash)
 
     if opts[:file].nil?
-      respond "--- lich: could not find script #{opts[:name]} not found in #{Script.glob}"
+      session.to_client "--- cabal: could not find script #{opts[:name]} not found in #{Script.glob}"
       return :not_found
     end
 
     opts[:name] = Script.script_name opts[:file]
 
     if Script.running.find { |s| s.name.eql?(opts[:name]) } and not opts[:force]
-      respond "--- lich: #{opts[:name]} is already running"
+      session.to_client "--- cabal: #{opts[:name]} is already running"
       return :already_running
     end
 
-    Script.new(opts) { |script|
-      runtime = opts.fetch(:runtime) {
-        if ENV["SHARED"]
-          Script::Runtime.of(Thread.current)
-        else
-          GLOBAL_SCRIPT_CONTEXT.dup
-        end
-      }
+    Script.new(opts) { |script, runtime|
+      runtime = Script.runtime
       runtime.local_variable_set :script, script
-      runtime.local_variable_set :context, runtime
       runtime.eval(script.contents, script.file_name)
     }
   end
@@ -264,7 +263,7 @@ class Script < Thread
   attr_reader :name, :vars, :safe,
               :file_name, :at_exit_procs,
               :thread_group, :_value, :shutdown,
-              :exit_status, :start_time, :run_time,
+              :start_time, :run_time,
               :session
 
   attr_accessor :quiet, :no_echo, :paused,
@@ -273,7 +272,8 @@ class Script < Thread
                 :want_upstream, :want_script_output,
                 :no_pause_all, :no_kill_all,
                 :downstream_buffer, :upstream_buffer, :unique_buffer,
-                :die_with, :watchfor, :command_line, :ignore_pause
+                :die_with, :watchfor, :command_line, :ignore_pause,
+                :_value, :exit_status
 
   def initialize(args, &block)
     @file_name = args[:file]
@@ -284,12 +284,12 @@ class Script < Thread
         args[:args]
       when String
         if args[:args].empty?
-            []
+          []
         else
-            [args[:args]].concat(args[:args]
-              .scan(/[^\s"]*(?<!\\)"(?:\\"|[^"])+(?<!\\)"[^\s]*|(?:\\"|[^"\s])+/)
-              .collect { |s| s.gsub(/(?<!\\)"/,'')
-              .gsub('\\"', '"') })
+          [args[:args]].concat(args[:args]
+            .scan(/[^\s"]*(?<!\\)"(?:\\"|[^"])+(?<!\\)"[^\s]*|(?:\\"|[^"\s])+/)
+            .collect { |s| s.gsub(/(?<!\\)"/,'')
+            .gsub('\\"', '"') })
         end
       else
         []
@@ -321,35 +321,36 @@ class Script < Thread
     super {
       self.priority = 1
       Thread.handle_interrupt(Script::Shutdown => :never) do
+        script = self
         begin
           Thread.handle_interrupt(Script::Shutdown => :immediate) do
-            respond("--- lich: #{self.name} active.") unless self.quiet
+            respond("--- cabal: #{script.name} active.") unless script.quiet
             begin
-              @_value = yield(self)
+              script._value = yield(script, self)
             rescue Shutdown => e
-              @exit_status = Status::Killed
-            rescue StandardError => e
-              #pp "RESCUE:%s" % e.class.name
-              print_error(e)
-              @exit_status = Status::Err
+              script.exit_status = Status::Killed
+            rescue Exception => e
+              script.print_error(e)
+              respond(e.message, e.backtrace.join("\n"))
+              script.exit_status = Status::Err
             else
-              @exit_status = Status::Ok if @exit_status.nil?
+              script.exit_status = Status::Ok if script.exit_status.nil?
             end
           end
         ensure
-          @exit_status = Status::Killed unless @exit_status
-          @_value = nil if @_value.eql?(:unknown)
-          #puts "%s> :ensure shutdown=%s" % [self.name, self.value]
-          self.before_shutdown()
-          self.halt()
+          script.exit_status = Status::Killed unless script.exit_status
+          script._value = nil if script._value.eql?(:unknown)
+          script.before_shutdown()
+          respond("--- cabal: #{script.name} exiting with status: #{script.exit_status} in #{script.uptime}")
+          script.halt()
         end
       end
     }
   end
 
   def print_error(e)
-    respond "script:%s:error: %s" % [self.name, e.message]
-    respond "script:%s:backtrace:\n%s" % [self.name, e.backtrace.join("\n")]
+    puts "script:%s:error: %s" % [self.name, e.message]
+    puts "script:%s:backtrace:\n%s" % [self.name, e.backtrace.join("\n")]
   end
 
   def uptime()
@@ -395,7 +396,7 @@ class Script < Thread
 
   def inspect
     "%s<%s status=%s uptime=%s value=%s>" % [
-      self.class.name, @name,
+      self.name, @name,
         self.status, uptime, @_value.inspect]
   end
 
@@ -421,18 +422,12 @@ class Script < Thread
       end
     ensure
       @@running.delete(self)
-      _sitrep()
       self.dispose()
       self.kill()
       self
     end
   end
 
-  def _sitrep()
-    return if @_reported
-    @_reported = true
-    respond("--- lich: #{name} exiting with status: #{exit_status} in #{uptime}")
-  end
 
   def at_exit(&block)
     return @at_exit_procs << block if block_given?
@@ -459,12 +454,12 @@ class Script < Thread
   end
 
   def pause
-    respond "--- lich: #{@name} paused."
+    respond "--- cabal: #{@name} paused."
     @paused = true
   end
 
   def unpause
-    respond "--- lich: #{@name} unpaused."
+    respond "--- cabal: #{@name} unpaused."
     @paused = false
   end
 

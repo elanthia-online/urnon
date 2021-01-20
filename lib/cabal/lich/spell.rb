@@ -1,3 +1,4 @@
+require 'cabal/session'
 
 class Spell
   @@list ||= Array.new
@@ -165,7 +166,7 @@ class Spell
     activator_modifier = { 'tap' => 0.5, 'rub' => 1, 'wave' => 1, 'raise' => 1.33, 'drink' => 0, 'bite' => 0, 'eat' => 0, 'gobble' => 0 }
     can_haz_spell_ranks = /Spells\.(?:minorelemental|majorelemental|minorspiritual|majorspiritual|wizard|sorcerer|ranger|paladin|empath|cleric|bard|minormental)/
     skills = [ 'Spells.minorelemental', 'Spells.majorelemental', 'Spells.minorspiritual', 'Spells.majorspiritual', 'Spells.wizard', 'Spells.sorcerer', 'Spells.ranger', 'Spells.paladin', 'Spells.empath', 'Spells.cleric', 'Spells.bard', 'Spells.minormental', 'Skills.magicitemuse', 'Skills.arancesymbols' ]
-    if options[:caster] and (options[:caster] !~ /^(?:self|#{XMLData.name})$/i)
+    if options[:caster] and (options[:caster] !~ /^(?:self|#{Session.current.xml_data.name})$/i)
         if options[:target] and (options[:target].downcase == options[:caster].downcase)
           formula = @duration['self'][:duration].to_s.dup
         else
@@ -189,7 +190,7 @@ class Spell
           skills.each { |skill_name| formula.gsub!(skill_name, "SpellRanks[#{options[:caster].to_s.inspect}].#{skill_name.sub(/^(?:Spells|Skills)\./, '')}.to_i") }
         end
     else
-        if options[:target] and (options[:target] !~ /^(?:self|#{XMLData.name})$/i)
+        if options[:target] and (options[:target] !~ /^(?:self|#{Session.current.xml_data.name})$/i)
           formula = @duration['target'][:duration].dup || @duration['self'][:duration].to_s.dup
         else
           formula = @duration['self'][:duration].to_s.dup
@@ -247,7 +248,7 @@ class Spell
     (self.timeleft > 0) and @active
   end
   def stackable?(options={})
-    if options[:caster] and (options[:caster] !~ /^(?:self|#{XMLData.name})$/i)
+    if options[:caster] and (options[:caster] !~ /^(?:self|#{Session.current.xml_data.name})$/i)
         if options[:target] and (options[:target].downcase == options[:caster].downcase)
           @duration['self'][:stackable]
         else
@@ -258,7 +259,7 @@ class Spell
           end
         end
     else
-        if options[:target] and (options[:target] !~ /^(?:self|#{XMLData.name})$/i)
+        if options[:target] and (options[:target] !~ /^(?:self|#{Session.current.xml_data.name})$/i)
           if @duration['target'][:stackable].nil?
               @duration['self'][:stackable]
           else
@@ -270,7 +271,7 @@ class Spell
     end
   end
   def refreshable?(options={})
-    if options[:caster] and (options[:caster] !~ /^(?:self|#{XMLData.name})$/i)
+    if options[:caster] and (options[:caster] !~ /^(?:self|#{Session.current.xml_data.name})$/i)
         if options[:target] and (options[:target].downcase == options[:caster].downcase)
           @duration['self'][:refreshable]
         else
@@ -281,7 +282,7 @@ class Spell
           end
         end
     else
-        if options[:target] and (options[:target] !~ /^(?:self|#{XMLData.name})$/i)
+        if options[:target] and (options[:target] !~ /^(?:self|#{Session.current.xml_data.name})$/i)
           if @duration['target'][:refreshable].nil?
               @duration['self'][:refreshable]
           else
@@ -293,7 +294,7 @@ class Spell
     end
   end
   def multicastable?(options={})
-    if options[:caster] and (options[:caster] !~ /^(?:self|#{XMLData.name})$/i)
+    if options[:caster] and (options[:caster] !~ /^(?:self|#{Session.current.xml_data.name})$/i)
         if options[:target] and (options[:target].downcase == options[:caster].downcase)
           @duration['self'][:multicastable]
         else
@@ -304,7 +305,7 @@ class Spell
           end
         end
     else
-        if options[:target] and (options[:target] !~ /^(?:self|#{XMLData.name})$/i)
+        if options[:target] and (options[:target] !~ /^(?:self|#{Session.current.xml_data.name})$/i)
           if @duration['target'][:multicastable].nil?
               @duration['self'][:multicastable]
           else
@@ -324,29 +325,29 @@ class Spell
         return false
     end
     if circle_num == 1
-        ranks = [ Spells.minorspiritual, XMLData.level ].min
+        ranks = [ Spells.minorspiritual, Session.current.xml_data.level ].min
     elsif circle_num == 2
-        ranks = [ Spells.majorspiritual, XMLData.level ].min
+        ranks = [ Spells.majorspiritual, Session.current.xml_data.level ].min
     elsif circle_num == 3
-        ranks = [ Spells.cleric, XMLData.level ].min
+        ranks = [ Spells.cleric, Session.current.xml_data.level ].min
     elsif circle_num == 4
-        ranks = [ Spells.minorelemental, XMLData.level ].min
+        ranks = [ Spells.minorelemental, Session.current.xml_data.level ].min
     elsif circle_num == 5
-        ranks = [ Spells.majorelemental, XMLData.level ].min
+        ranks = [ Spells.majorelemental, Session.current.xml_data.level ].min
     elsif circle_num == 6
-        ranks = [ Spells.ranger, XMLData.level ].min
+        ranks = [ Spells.ranger, Session.current.xml_data.level ].min
     elsif circle_num == 7
-        ranks = [ Spells.sorcerer, XMLData.level ].min
+        ranks = [ Spells.sorcerer, Session.current.xml_data.level ].min
     elsif circle_num == 9
-        ranks = [ Spells.wizard, XMLData.level ].min
+        ranks = [ Spells.wizard, Session.current.xml_data.level ].min
     elsif circle_num == 10
-        ranks = [ Spells.bard, XMLData.level ].min
+        ranks = [ Spells.bard, Session.current.xml_data.level ].min
     elsif circle_num == 11
-        ranks = [ Spells.empath, XMLData.level ].min
+        ranks = [ Spells.empath, Session.current.xml_data.level ].min
     elsif circle_num == 12
-        ranks = [ Spells.minormental, XMLData.level ].min
+        ranks = [ Spells.minormental, Session.current.xml_data.level ].min
     elsif circle_num == 16
-        ranks = [ Spells.paladin, XMLData.level ].min
+        ranks = [ Spells.paladin, Session.current.xml_data.level ].min
     elsif circle_num == 17
         if (@num == 1700) and (Char.prof =~ /^(?:Wizard|Cleric|Empath|Sorcerer|Savant)$/)
           return true
@@ -376,14 +377,14 @@ class Spell
   end
   def available?(options={})
     if self.known?
-        if options[:caster] and (options[:caster] !~ /^(?:self|#{XMLData.name})$/i)
+        if options[:caster] and (options[:caster] !~ /^(?:self|#{Session.current.xml_data.name})$/i)
           if options[:target] and (options[:target].downcase == options[:caster].downcase)
               true
           else
               @availability == 'all'
           end
         else
-          if options[:target] and (options[:target] !~ /^(?:self|#{XMLData.name})$/i)
+          if options[:target] and (options[:target] !~ /^(?:self|#{Session.current.xml_data.name})$/i)
               @availability == 'all'
           else
               true
@@ -397,14 +398,14 @@ class Spell
     @name.to_s
   end
   def max_duration(options={})
-    if options[:caster] and (options[:caster] !~ /^(?:self|#{XMLData.name})$/i)
+    if options[:caster] and (options[:caster] !~ /^(?:self|#{Session.current.xml_data.name})$/i)
         if options[:target] and (options[:target].downcase == options[:caster].downcase)
           @duration['self'][:max_duration]
         else
           @duration['target'][:max_duration] || @duration['self'][:max_duration]
         end
     else
-        if options[:target] and (options[:target] !~ /^(?:self|#{XMLData.name})$/i)
+        if options[:target] and (options[:target] !~ /^(?:self|#{Session.current.xml_data.name})$/i)
           @duration['target'][:max_duration] || @duration['self'][:max_duration]
         else
           @duration['self'][:max_duration]
@@ -650,7 +651,7 @@ class Spell
         @bonus[args[0].to_s.sub(/_formula$/, '').gsub('_', '-')].dup
     elsif (args[0].to_s =~ /_cost(?:_formula)?$/) and @@cost_list.include?(args[0].to_s.sub(/_formula$/, '').sub(/_cost$/, ''))
         options = (args[1] || {}).to_hash
-        if options[:caster] and (options[:caster] !~ /^(?:self|#{XMLData.name})$/i)
+        if options[:caster] and (options[:caster] !~ /^(?:self|#{Session.current.xml_data.name})$/i)
           if options[:target] and (options[:target].downcase == options[:caster].downcase)
               formula = @cost[args[0].to_s.sub(/_formula$/, '').sub(/_cost$/, '')]['self'].dup
           else
@@ -659,7 +660,7 @@ class Spell
           skills = { 'Spells.minorelemental' => "SpellRanks['#{options[:caster]}'].minorelemental.to_i", 'Spells.majorelemental' => "SpellRanks['#{options[:caster]}'].majorelemental.to_i", 'Spells.minorspiritual' => "SpellRanks['#{options[:caster]}'].minorspiritual.to_i", 'Spells.majorspiritual' => "SpellRanks['#{options[:caster]}'].majorspiritual.to_i", 'Spells.wizard' => "SpellRanks['#{options[:caster]}'].wizard.to_i", 'Spells.sorcerer' => "SpellRanks['#{options[:caster]}'].sorcerer.to_i", 'Spells.ranger' => "SpellRanks['#{options[:caster]}'].ranger.to_i", 'Spells.paladin' => "SpellRanks['#{options[:caster]}'].paladin.to_i", 'Spells.empath' => "SpellRanks['#{options[:caster]}'].empath.to_i", 'Spells.cleric' => "SpellRanks['#{options[:caster]}'].cleric.to_i", 'Spells.bard' => "SpellRanks['#{options[:caster]}'].bard.to_i", 'Stats.level' => '100' }
           skills.each_pair { |a, b| formula.gsub!(a, b) }
         else
-          if options[:target] and (options[:target] !~ /^(?:self|#{XMLData.name})$/i)
+          if options[:target] and (options[:target] !~ /^(?:self|#{Session.current.xml_data.name})$/i)
               formula = @cost[args[0].to_s.sub(/_formula$/, '').sub(/_cost$/, '')]['target'].dup || @cost[args[0].to_s.gsub('_', '-')]['self'].dup
           else
               formula = @cost[args[0].to_s.sub(/_formula$/, '').sub(/_cost$/, '')]['self'].dup

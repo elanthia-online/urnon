@@ -1,5 +1,6 @@
 require "yaml"
 require "cabal/xdg"
+require 'cabal/script/runtime'
 
 module Autostart
   def self.yaml_autostart(session)
@@ -21,7 +22,7 @@ module Autostart
     (script, *argv)= script.strip.split(/\s+/)
     return if Script.running?(script)
     return unless Script.exists?(script)
-    Script.start(script, argv.join(" "), session)
+    Script.start(script, argv.join(" "), session: session)
     ttl = Time.now + 3
     sleep 0.1 until Script.running?(script) or Time.now > ttl
     respond "autostart: error: #{script} failed to start" if Time.now > ttl
@@ -46,12 +47,17 @@ module Autostart
   end
 
   def self.autostart_lich_script(session)
-    return Script.start("autostart", session) if Script.exists?("autostart")
+    return Script.start("autostart", session: session) if Script.exists?("autostart")
   end
 
   def self.call(session)
-    wait_until { XMLData.name.is_a?(String) }
-    return yaml_autostart(session) if yaml?
-    autostart_lich_script(session)
+    begin
+      sleep 0.1 while session.xml_data.name.empty?
+      return yaml_autostart(session) if yaml?
+      autostart_lich_script(session)
+    rescue => exception
+      puts exception.message
+      puts exception.backtrace.join("\n")
+    end
   end
 end

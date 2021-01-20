@@ -13,10 +13,11 @@ class DownstreamHook
      end
      @@downstream_hooks[name] = [action, session]
   end
-  def DownstreamHook.run(server_string)
+  def DownstreamHook.run(server_string, caller)
      for key in @@downstream_hooks.keys
       begin
         hook, session = @@downstream_hooks[key]
+        next unless caller.eql?(session)
         exec_time = Benchmark.realtime {
           case hook.arity
           when 1

@@ -1,3 +1,4 @@
+require 'cabal/session'
 ##
 ## TODO: de-duplicate these definitions and
 ## 1. break them into their own files
@@ -7,21 +8,19 @@ class Char
   @@name ||= nil
   @@citizenship ||= nil
   private_class_method :new
-  def Char.init(blah)
-     echo 'Char.init is no longer used.  Update or fix your script.'
-  end
+
   def Char.name
-     XMLData.name
+    Session.current.xml_data.name
   end
-  def Char.name=(name)
-     nil
-  end
+
   def Char.health(*args)
-     health(*args)
+     checkhealth(*args)
   end
+
   def Char.mana(*args)
      checkmana(*args)
   end
+
   def Char.spirit(*args)
      checkspirit(*args)
   end
@@ -85,7 +84,7 @@ class Char
   end
   def Char.info
      ary = []
-     ary.push sprintf("Name: %s  Race: %s  Profession: %s", XMLData.name, Stats.race, Stats.prof)
+     ary.push sprintf("Name: %s  Race: %s  Profession: %s", Session.current.xml_data.name, Stats.race, Stats.prof)
      ary.push sprintf("Gender: %s    Age: %d    Expr: %d    Level: %d", Stats.gender, Stats.age, Stats.exp, Stats.level)
      ary.push sprintf("%017.17s Normal (Bonus)  ...  Enhanced (Bonus)", "")
      %w[ Strength Constitution Dexterity Agility Discipline Aura Logic Intuition Wisdom Influence ].each { |stat|
@@ -98,7 +97,7 @@ class Char
   end
   def Char.skills
      ary = []
-     ary.push sprintf("%s (at level %d), your current skill bonuses and ranks (including all modifiers) are:", XMLData.name, Stats.level)
+     ary.push sprintf("%s (at level %d), your current skill bonuses and ranks (including all modifiers) are:", Session.current.xml_data.name, Stats.level)
      ary.push sprintf("  %-035s| Current Current", 'Skill Name')
      ary.push sprintf("  %-035s|%08s%08s", '', 'Bonus', 'Ranks')
      fmt = [ [ 'Two Weapon Combat', 'Armor Use', 'Shield Use', 'Combat Maneuvers', 'Edged Weapons', 'Blunt Weapons', 'Two-Handed Weapons', 'Ranged Weapons', 'Thrown Weapons', 'Polearm Weapons', 'Brawling', 'Ambush', 'Multi Opponent Combat', 'Combat Leadership', 'Physical Fitness', 'Dodging', 'Arcane Symbols', 'Magic Item Use', 'Spell Aiming', 'Harness Power', 'Elemental Mana Control', 'Mental Mana Control', 'Spirit Mana Control', 'Elemental Lore - Air', 'Elemental Lore - Earth', 'Elemental Lore - Fire', 'Elemental Lore - Water', 'Spiritual Lore - Blessings', 'Spiritual Lore - Religion', 'Spiritual Lore - Summoning', 'Sorcerous Lore - Demonology', 'Sorcerous Lore - Necromancy', 'Mental Lore - Divination', 'Mental Lore - Manipulation', 'Mental Lore - Telepathy', 'Mental Lore - Transference', 'Mental Lore - Transformation', 'Survival', 'Disarming Traps', 'Picking Locks', 'Stalking and Hiding', 'Perception', 'Climbing', 'Swimming', 'First Aid', 'Trading', 'Pickpocketing' ], [ 'twoweaponcombat', 'armoruse', 'shielduse', 'combatmaneuvers', 'edgedweapons', 'bluntweapons', 'twohandedweapons', 'rangedweapons', 'thrownweapons', 'polearmweapons', 'brawling', 'ambush', 'multiopponentcombat', 'combatleadership', 'physicalfitness', 'dodging', 'arcanesymbols', 'magicitemuse', 'spellaiming', 'harnesspower', 'emc', 'mmc', 'smc', 'elair', 'elearth', 'elfire', 'elwater', 'slblessings', 'slreligion', 'slsummoning', 'sldemonology', 'slnecromancy', 'mldivination', 'mlmanipulation', 'mltelepathy', 'mltransference', 'mltransformation', 'survival', 'disarmingtraps', 'pickinglocks', 'stalkingandhiding', 'perception', 'climbing', 'swimming', 'firstaid', 'trading', 'pickpocketing' ] ]
@@ -164,7 +163,7 @@ class Society
      @@rank
   end
   def Society.task
-     XMLData.society_task
+     Session.current.xml_data.society_task
   end
 end
 
@@ -875,11 +874,11 @@ class Stats
   def Stats.enhanced_inf;          @@enhanced_inf;        end
   def Stats.enhanced_inf=(val);    @@enhanced_inf=val;    end
   def Stats.exp
-     if XMLData.next_level_text =~ /until next level/
+     if Session.current.xml_data.next_level_text =~ /until next level/
         exp_threshold = [ 2500, 5000, 10000, 17500, 27500, 40000, 55000, 72500, 92500, 115000, 140000, 167000, 197500, 230000, 265000, 302000, 341000, 382000, 425000, 470000, 517000, 566000, 617000, 670000, 725000, 781500, 839500, 899000, 960000, 1022500, 1086500, 1152000, 1219000, 1287500, 1357500, 1429000, 1502000, 1576500, 1652500, 1730000, 1808500, 1888000, 1968500, 2050000, 2132500, 2216000, 2300500, 2386000, 2472500, 2560000, 2648000, 2736500, 2825500, 2915000, 3005000, 3095500, 3186500, 3278000, 3370000, 3462500, 3555500, 3649000, 3743000, 3837500, 3932500, 4028000, 4124000, 4220500, 4317500, 4415000, 4513000, 4611500, 4710500, 4810000, 4910000, 5010500, 5111500, 5213000, 5315000, 5417500, 5520500, 5624000, 5728000, 5832500, 5937500, 6043000, 6149000, 6255500, 6362500, 6470000, 6578000, 6686500, 6795500, 6905000, 7015000, 7125500, 7236500, 7348000, 7460000, 7572500 ]
-        exp_threshold[XMLData.level] - XMLData.next_level_text.slice(/[0-9]+/).to_i
+        exp_threshold[Session.current.xml_data.level] - Session.current.xml_data.next_level_text.slice(/[0-9]+/).to_i
      else
-        XMLData.next_level_text.slice(/[0-9]+/).to_i
+        Session.current.xml_data.next_level_text.slice(/[0-9]+/).to_i
      end
   end
   def Stats.exp=(val);    nil;    end
@@ -924,91 +923,91 @@ class Gift
 end
 
 class Wounds
-  def Wounds.leftEye;   fix_injury_mode; XMLData.injuries['leftEye']['wound'];   end
-  def Wounds.leye;      fix_injury_mode; XMLData.injuries['leftEye']['wound'];   end
-  def Wounds.rightEye;  fix_injury_mode; XMLData.injuries['rightEye']['wound'];  end
-  def Wounds.reye;      fix_injury_mode; XMLData.injuries['rightEye']['wound'];  end
-  def Wounds.head;      fix_injury_mode; XMLData.injuries['head']['wound'];      end
-  def Wounds.neck;      fix_injury_mode; XMLData.injuries['neck']['wound'];      end
-  def Wounds.back;      fix_injury_mode; XMLData.injuries['back']['wound'];      end
-  def Wounds.chest;     fix_injury_mode; XMLData.injuries['chest']['wound'];     end
-  def Wounds.abdomen;   fix_injury_mode; XMLData.injuries['abdomen']['wound'];   end
-  def Wounds.abs;       fix_injury_mode; XMLData.injuries['abdomen']['wound'];   end
-  def Wounds.leftArm;   fix_injury_mode; XMLData.injuries['leftArm']['wound'];   end
-  def Wounds.larm;      fix_injury_mode; XMLData.injuries['leftArm']['wound'];   end
-  def Wounds.rightArm;  fix_injury_mode; XMLData.injuries['rightArm']['wound'];  end
-  def Wounds.rarm;      fix_injury_mode; XMLData.injuries['rightArm']['wound'];  end
-  def Wounds.rightHand; fix_injury_mode; XMLData.injuries['rightHand']['wound']; end
-  def Wounds.rhand;     fix_injury_mode; XMLData.injuries['rightHand']['wound']; end
-  def Wounds.leftHand;  fix_injury_mode; XMLData.injuries['leftHand']['wound'];  end
-  def Wounds.lhand;     fix_injury_mode; XMLData.injuries['leftHand']['wound'];  end
-  def Wounds.leftLeg;   fix_injury_mode; XMLData.injuries['leftLeg']['wound'];   end
-  def Wounds.lleg;      fix_injury_mode; XMLData.injuries['leftLeg']['wound'];   end
-  def Wounds.rightLeg;  fix_injury_mode; XMLData.injuries['rightLeg']['wound'];  end
-  def Wounds.rleg;      fix_injury_mode; XMLData.injuries['rightLeg']['wound'];  end
-  def Wounds.leftFoot;  fix_injury_mode; XMLData.injuries['leftFoot']['wound'];  end
-  def Wounds.rightFoot; fix_injury_mode; XMLData.injuries['rightFoot']['wound']; end
-  def Wounds.nsys;      fix_injury_mode; XMLData.injuries['nsys']['wound'];      end
-  def Wounds.nerves;    fix_injury_mode; XMLData.injuries['nsys']['wound'];      end
+  def Wounds.leftEye;   fix_injury_mode; Session.current.xml_data.injuries['leftEye']['wound'];   end
+  def Wounds.leye;      fix_injury_mode; Session.current.xml_data.injuries['leftEye']['wound'];   end
+  def Wounds.rightEye;  fix_injury_mode; Session.current.xml_data.injuries['rightEye']['wound'];  end
+  def Wounds.reye;      fix_injury_mode; Session.current.xml_data.injuries['rightEye']['wound'];  end
+  def Wounds.head;      fix_injury_mode; Session.current.xml_data.injuries['head']['wound'];      end
+  def Wounds.neck;      fix_injury_mode; Session.current.xml_data.injuries['neck']['wound'];      end
+  def Wounds.back;      fix_injury_mode; Session.current.xml_data.injuries['back']['wound'];      end
+  def Wounds.chest;     fix_injury_mode; Session.current.xml_data.injuries['chest']['wound'];     end
+  def Wounds.abdomen;   fix_injury_mode; Session.current.xml_data.injuries['abdomen']['wound'];   end
+  def Wounds.abs;       fix_injury_mode; Session.current.xml_data.injuries['abdomen']['wound'];   end
+  def Wounds.leftArm;   fix_injury_mode; Session.current.xml_data.injuries['leftArm']['wound'];   end
+  def Wounds.larm;      fix_injury_mode; Session.current.xml_data.injuries['leftArm']['wound'];   end
+  def Wounds.rightArm;  fix_injury_mode; Session.current.xml_data.injuries['rightArm']['wound'];  end
+  def Wounds.rarm;      fix_injury_mode; Session.current.xml_data.injuries['rightArm']['wound'];  end
+  def Wounds.rightHand; fix_injury_mode; Session.current.xml_data.injuries['rightHand']['wound']; end
+  def Wounds.rhand;     fix_injury_mode; Session.current.xml_data.injuries['rightHand']['wound']; end
+  def Wounds.leftHand;  fix_injury_mode; Session.current.xml_data.injuries['leftHand']['wound'];  end
+  def Wounds.lhand;     fix_injury_mode; Session.current.xml_data.injuries['leftHand']['wound'];  end
+  def Wounds.leftLeg;   fix_injury_mode; Session.current.xml_data.injuries['leftLeg']['wound'];   end
+  def Wounds.lleg;      fix_injury_mode; Session.current.xml_data.injuries['leftLeg']['wound'];   end
+  def Wounds.rightLeg;  fix_injury_mode; Session.current.xml_data.injuries['rightLeg']['wound'];  end
+  def Wounds.rleg;      fix_injury_mode; Session.current.xml_data.injuries['rightLeg']['wound'];  end
+  def Wounds.leftFoot;  fix_injury_mode; Session.current.xml_data.injuries['leftFoot']['wound'];  end
+  def Wounds.rightFoot; fix_injury_mode; Session.current.xml_data.injuries['rightFoot']['wound']; end
+  def Wounds.nsys;      fix_injury_mode; Session.current.xml_data.injuries['nsys']['wound'];      end
+  def Wounds.nerves;    fix_injury_mode; Session.current.xml_data.injuries['nsys']['wound'];      end
   def Wounds.arms
      fix_injury_mode
-     [XMLData.injuries['leftArm']['wound'],XMLData.injuries['rightArm']['wound'],XMLData.injuries['leftHand']['wound'],XMLData.injuries['rightHand']['wound']].max
+     [Session.current.xml_data.injuries['leftArm']['wound'],Session.current.xml_data.injuries['rightArm']['wound'],Session.current.xml_data.injuries['leftHand']['wound'],Session.current.xml_data.injuries['rightHand']['wound']].max
   end
   def Wounds.limbs
      fix_injury_mode
-     [XMLData.injuries['leftArm']['wound'],XMLData.injuries['rightArm']['wound'],XMLData.injuries['leftHand']['wound'],XMLData.injuries['rightHand']['wound'],XMLData.injuries['leftLeg']['wound'],XMLData.injuries['rightLeg']['wound']].max
+     [Session.current.xml_data.injuries['leftArm']['wound'],Session.current.xml_data.injuries['rightArm']['wound'],Session.current.xml_data.injuries['leftHand']['wound'],Session.current.xml_data.injuries['rightHand']['wound'],Session.current.xml_data.injuries['leftLeg']['wound'],Session.current.xml_data.injuries['rightLeg']['wound']].max
   end
   def Wounds.torso
      fix_injury_mode
-     [XMLData.injuries['rightEye']['wound'],XMLData.injuries['leftEye']['wound'],XMLData.injuries['chest']['wound'],XMLData.injuries['abdomen']['wound'],XMLData.injuries['back']['wound']].max
+     [Session.current.xml_data.injuries['rightEye']['wound'],Session.current.xml_data.injuries['leftEye']['wound'],Session.current.xml_data.injuries['chest']['wound'],Session.current.xml_data.injuries['abdomen']['wound'],Session.current.xml_data.injuries['back']['wound']].max
   end
   def Wounds.method_missing(arg=nil)
-     echo "Wounds: Invalid area, try one of these: arms, limbs, torso, #{XMLData.injuries.keys.join(', ')}"
+     echo "Wounds: Invalid area, try one of these: arms, limbs, torso, #{Session.current.xml_data.injuries.keys.join(', ')}"
      nil
   end
 end
 
 class Scars
-  def Scars.leftEye;   fix_injury_mode; XMLData.injuries['leftEye']['scar'];   end
-  def Scars.leye;      fix_injury_mode; XMLData.injuries['leftEye']['scar'];   end
-  def Scars.rightEye;  fix_injury_mode; XMLData.injuries['rightEye']['scar'];  end
-  def Scars.reye;      fix_injury_mode; XMLData.injuries['rightEye']['scar'];  end
-  def Scars.head;      fix_injury_mode; XMLData.injuries['head']['scar'];      end
-  def Scars.neck;      fix_injury_mode; XMLData.injuries['neck']['scar'];      end
-  def Scars.back;      fix_injury_mode; XMLData.injuries['back']['scar'];      end
-  def Scars.chest;     fix_injury_mode; XMLData.injuries['chest']['scar'];     end
-  def Scars.abdomen;   fix_injury_mode; XMLData.injuries['abdomen']['scar'];   end
-  def Scars.abs;       fix_injury_mode; XMLData.injuries['abdomen']['scar'];   end
-  def Scars.leftArm;   fix_injury_mode; XMLData.injuries['leftArm']['scar'];   end
-  def Scars.larm;      fix_injury_mode; XMLData.injuries['leftArm']['scar'];   end
-  def Scars.rightArm;  fix_injury_mode; XMLData.injuries['rightArm']['scar'];  end
-  def Scars.rarm;      fix_injury_mode; XMLData.injuries['rightArm']['scar'];  end
-  def Scars.rightHand; fix_injury_mode; XMLData.injuries['rightHand']['scar']; end
-  def Scars.rhand;     fix_injury_mode; XMLData.injuries['rightHand']['scar']; end
-  def Scars.leftHand;  fix_injury_mode; XMLData.injuries['leftHand']['scar'];  end
-  def Scars.lhand;     fix_injury_mode; XMLData.injuries['leftHand']['scar'];  end
-  def Scars.leftLeg;   fix_injury_mode; XMLData.injuries['leftLeg']['scar'];   end
-  def Scars.lleg;      fix_injury_mode; XMLData.injuries['leftLeg']['scar'];   end
-  def Scars.rightLeg;  fix_injury_mode; XMLData.injuries['rightLeg']['scar'];  end
-  def Scars.rleg;      fix_injury_mode; XMLData.injuries['rightLeg']['scar'];  end
-  def Scars.leftFoot;  fix_injury_mode; XMLData.injuries['leftFoot']['scar'];  end
-  def Scars.rightFoot; fix_injury_mode; XMLData.injuries['rightFoot']['scar']; end
-  def Scars.nsys;      fix_injury_mode; XMLData.injuries['nsys']['scar'];      end
-  def Scars.nerves;    fix_injury_mode; XMLData.injuries['nsys']['scar'];      end
+  def Scars.leftEye;   fix_injury_mode; Session.current.xml_data.injuries['leftEye']['scar'];   end
+  def Scars.leye;      fix_injury_mode; Session.current.xml_data.injuries['leftEye']['scar'];   end
+  def Scars.rightEye;  fix_injury_mode; Session.current.xml_data.injuries['rightEye']['scar'];  end
+  def Scars.reye;      fix_injury_mode; Session.current.xml_data.injuries['rightEye']['scar'];  end
+  def Scars.head;      fix_injury_mode; Session.current.xml_data.injuries['head']['scar'];      end
+  def Scars.neck;      fix_injury_mode; Session.current.xml_data.injuries['neck']['scar'];      end
+  def Scars.back;      fix_injury_mode; Session.current.xml_data.injuries['back']['scar'];      end
+  def Scars.chest;     fix_injury_mode; Session.current.xml_data.injuries['chest']['scar'];     end
+  def Scars.abdomen;   fix_injury_mode; Session.current.xml_data.injuries['abdomen']['scar'];   end
+  def Scars.abs;       fix_injury_mode; Session.current.xml_data.injuries['abdomen']['scar'];   end
+  def Scars.leftArm;   fix_injury_mode; Session.current.xml_data.injuries['leftArm']['scar'];   end
+  def Scars.larm;      fix_injury_mode; Session.current.xml_data.injuries['leftArm']['scar'];   end
+  def Scars.rightArm;  fix_injury_mode; Session.current.xml_data.injuries['rightArm']['scar'];  end
+  def Scars.rarm;      fix_injury_mode; Session.current.xml_data.injuries['rightArm']['scar'];  end
+  def Scars.rightHand; fix_injury_mode; Session.current.xml_data.injuries['rightHand']['scar']; end
+  def Scars.rhand;     fix_injury_mode; Session.current.xml_data.injuries['rightHand']['scar']; end
+  def Scars.leftHand;  fix_injury_mode; Session.current.xml_data.injuries['leftHand']['scar'];  end
+  def Scars.lhand;     fix_injury_mode; Session.current.xml_data.injuries['leftHand']['scar'];  end
+  def Scars.leftLeg;   fix_injury_mode; Session.current.xml_data.injuries['leftLeg']['scar'];   end
+  def Scars.lleg;      fix_injury_mode; Session.current.xml_data.injuries['leftLeg']['scar'];   end
+  def Scars.rightLeg;  fix_injury_mode; Session.current.xml_data.injuries['rightLeg']['scar'];  end
+  def Scars.rleg;      fix_injury_mode; Session.current.xml_data.injuries['rightLeg']['scar'];  end
+  def Scars.leftFoot;  fix_injury_mode; Session.current.xml_data.injuries['leftFoot']['scar'];  end
+  def Scars.rightFoot; fix_injury_mode; Session.current.xml_data.injuries['rightFoot']['scar']; end
+  def Scars.nsys;      fix_injury_mode; Session.current.xml_data.injuries['nsys']['scar'];      end
+  def Scars.nerves;    fix_injury_mode; Session.current.xml_data.injuries['nsys']['scar'];      end
   def Scars.arms
      fix_injury_mode
-     [XMLData.injuries['leftArm']['scar'],XMLData.injuries['rightArm']['scar'],XMLData.injuries['leftHand']['scar'],XMLData.injuries['rightHand']['scar']].max
+     [Session.current.xml_data.injuries['leftArm']['scar'],Session.current.xml_data.injuries['rightArm']['scar'],Session.current.xml_data.injuries['leftHand']['scar'],Session.current.xml_data.injuries['rightHand']['scar']].max
   end
   def Scars.limbs
      fix_injury_mode
-     [XMLData.injuries['leftArm']['scar'],XMLData.injuries['rightArm']['scar'],XMLData.injuries['leftHand']['scar'],XMLData.injuries['rightHand']['scar'],XMLData.injuries['leftLeg']['scar'],XMLData.injuries['rightLeg']['scar']].max
+     [Session.current.xml_data.injuries['leftArm']['scar'],Session.current.xml_data.injuries['rightArm']['scar'],Session.current.xml_data.injuries['leftHand']['scar'],Session.current.xml_data.injuries['rightHand']['scar'],Session.current.xml_data.injuries['leftLeg']['scar'],Session.current.xml_data.injuries['rightLeg']['scar']].max
   end
   def Scars.torso
      fix_injury_mode
-     [XMLData.injuries['rightEye']['scar'],XMLData.injuries['leftEye']['scar'],XMLData.injuries['chest']['scar'],XMLData.injuries['abdomen']['scar'],XMLData.injuries['back']['scar']].max
+     [Session.current.xml_data.injuries['rightEye']['scar'],Session.current.xml_data.injuries['leftEye']['scar'],Session.current.xml_data.injuries['chest']['scar'],Session.current.xml_data.injuries['abdomen']['scar'],Session.current.xml_data.injuries['back']['scar']].max
   end
   def Scars.method_missing(arg=nil)
-     echo "Scars: Invalid area, try one of these: arms, limbs, torso, #{XMLData.injuries.keys.join(', ')}"
+     echo "Scars: Invalid area, try one of these: arms, limbs, torso, #{Session.current.xml_data.injuries.keys.join(', ')}"
      nil
   end
 end
@@ -1267,7 +1266,7 @@ class GameObj
   end
 
   def GameObj.targets
-     @@npcs.select { |n| XMLData.current_target_ids.include?(n.id) }
+     @@npcs.select { |n| Session.current.xml_data.current_target_ids.include?(n.id) }
   end
 
   def GameObj.dead

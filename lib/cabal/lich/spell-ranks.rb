@@ -1,3 +1,5 @@
+require 'cabal/session'
+
 class SpellRanks
   @@list      ||= Array.new
   @@timestamp ||= 0
@@ -5,9 +7,9 @@ class SpellRanks
   attr_reader :name
   attr_accessor :minorspiritual, :majorspiritual, :cleric, :minorelemental, :majorelemental, :minormental, :ranger, :sorcerer, :wizard, :bard, :empath, :paladin, :arcanesymbols, :magicitemuse, :monk
   def SpellRanks.load
-    return @@loaded = true unless File.exists?("#{DATA_DIR}/#{XMLData.game}/spell-ranks.dat")
+    return @@loaded = true unless File.exists?("#{DATA_DIR}/#{Session.current.xml_data.game}/spell-ranks.dat")
     begin
-      File.open("#{DATA_DIR}/#{XMLData.game}/spell-ranks.dat", 'rb') { |f|
+      File.open("#{DATA_DIR}/#{Session.current.xml_data.game}/spell-ranks.dat", 'rb') { |f|
           @@timestamp, @@list = Marshal.load(f.read)
       }
       # minor mental circle added 2012-07-18; old data files will have @minormental as nil
@@ -26,7 +28,7 @@ class SpellRanks
 
   def SpellRanks.save
     begin
-        File.open("#{DATA_DIR}/#{XMLData.game}/spell-ranks.dat", 'wb') { |f|
+        File.open("#{DATA_DIR}/#{Session.current.xml_data.game}/spell-ranks.dat", 'wb') { |f|
           f.write(Marshal.dump([@@timestamp, @@list]))
         }
     rescue

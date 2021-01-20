@@ -1,5 +1,6 @@
 require "json"
 require "digest"
+require 'cabal/session'
 
 class Map
    LOCK ||= Mutex.new
@@ -16,7 +17,7 @@ class Map
    # this is a cache id
    @@cache_checksum         ||= -1
    # only perform expensive DB lookups when
-   # the XMLData.room_count changes after the first
+   # the Session.current.xml_data.room_count changes after the first
    @@cached_room_id         ||= nil
 
    @@current_room_id        ||= 0
@@ -95,14 +96,14 @@ class Map
    end
 
    def Map.get_location
-      unless XMLData.room_count == @@current_location_count
+      unless Session.current.xml_data.room_count == @@current_location_count
          if script = Script.current
             save_want_downstream = script.want_downstream
             script.want_downstream = true
             waitrt?
             location_result = dothistimeout 'location', 15, /^You carefully survey your surroundings and guess that your current location is .*? or somewhere close to it\.$|^You can't do that while submerged under water\.$|^You can't do that\.$|^It would be rude not to give your full attention to the performance\.$|^You can't do that while hanging around up here!$|^You are too distracted by the difficulty of staying alive in these treacherous waters to do that\.$|^You carefully survey your surroundings but are unable to guess your current location\.$|^Not in pitch darkness you don't\.$|^That is too difficult to consider here\.$/
             script.want_downstream = save_want_downstream
-            @@current_location_count = XMLData.room_count
+            @@current_location_count = Session.current.xml_data.room_count
             if location_result =~ /^You can't do that while submerged under water\.$|^You can't do that\.$|^It would be rude not to give your full attention to the performance\.$|^You can't do that while hanging around up here!$|^You are too distracted by the difficulty of staying alive in these treacherous waters to do that\.$|^You carefully survey your surroundings but are unable to guess your current location\.$|^Not in pitch darkness you don't\.$|^That is too difficult to consider here\.$/
                @@current_location = false
             else
@@ -118,22 +119,22 @@ class Map
    FOGGY_EXITS = /^Obvious (?:exits|paths): obscured by a thick fog$/
 
    def Map.strict_lookup_from_xml()
-     foggy_exits = (XMLData.room_exits_string =~ FOGGY_EXITS)
+     foggy_exits = (Session.current.xml_data.room_exits_string =~ FOGGY_EXITS)
      @@list.find { |r|
-       r.title.include?(XMLData.room_title) and
-       r.description.include?(XMLData.room_description.strip) and
+       r.title.include?(Session.current.xml_data.room_title) and
+       r.description.include?(Session.current.xml_data.room_description.strip) and
        (r.unique_loot.nil? or (r.unique_loot.to_a - GameObj.loot.to_a.collect { |obj| obj.name }).empty?) and
-       (foggy_exits or r.paths.include?(XMLData.room_exits_string.strip) or r.tags.include?('random-paths')) and
+       (foggy_exits or r.paths.include?(Session.current.xml_data.room_exits_string.strip) or r.tags.include?('random-paths')) and
        (not r.check_location or r.location == Map.get_location)
       }
    end
 
    def Map.fzf_from_xml()
       1.times {
-         @@fuzzy_room_count = XMLData.room_count
-         foggy_exits = (XMLData.room_exits_string =~ FOGGY_EXITS)
-         if (room = @@list.find { |r| r.title.include?(XMLData.room_title) and r.description.include?(XMLData.room_description.strip) and (r.unique_loot.nil? or (r.unique_loot.to_a - GameObj.loot.to_a.collect { |obj| obj.name }).empty?) and (foggy_exits or r.paths.include?(XMLData.room_exits_string.strip) or r.tags.include?('random-paths')) and (not r.check_location or r.location == Map.get_location) })
-            redo unless @@fuzzy_room_count == XMLData.room_count
+         @@fuzzy_room_count = Session.current.xml_data.room_count
+         foggy_exits = (Session.current.xml_data.room_exits_string =~ FOGGY_EXITS)
+         if (room = @@list.find { |r| r.title.include?(Session.current.xml_data.room_title) and r.description.include?(Session.current.xml_data.room_description.strip) and (r.unique_loot.nil? or (r.unique_loot.to_a - GameObj.loot.to_a.collect { |obj| obj.name }).empty?) and (foggy_exits or r.paths.include?(Session.current.xml_data.room_exits_string.strip) or r.tags.include?('random-paths')) and (not r.check_location or r.location == Map.get_location) })
+            redo unless @@fuzzy_room_count == Session.current.xml_data.room_count
             if room.tags.any? { |tag| tag =~ /^(set desc on; )?peer [a-z]+ =~ \/.+\/$/ }
                @@fuzzy_room_id = nil
                return nil
@@ -142,10 +143,10 @@ class Map
                return room
             end
          else
-            redo unless @@fuzzy_room_count == XMLData.room_count
-            desc_regex = /#{Regexp.escape(XMLData.room_description.strip.sub(/\.+$/, '')).gsub(/\\\.(?:\\\.\\\.)?/, '|')}/
-            if room = @@list.find { |r| r.title.include?(XMLData.room_title) and (foggy_exits or r.paths.include?(XMLData.room_exits_string.strip) or r.tags.include?('random-paths')) and (XMLData.room_window_disabled or r.description.any? { |desc| desc =~ desc_regex }) and (r.unique_loot.nil? or (r.unique_loot.to_a - GameObj.loot.to_a.collect { |obj| obj.name }).empty?) and (not r.check_location or r.location == Map.get_location) }
-               redo unless @@fuzzy_room_count == XMLData.room_count
+            redo unless @@fuzzy_room_count == Session.current.xml_data.room_count
+            desc_regex = /#{Regexp.escape(Session.current.xml_data.room_description.strip.sub(/\.+$/, '')).gsub(/\\\.(?:\\\.\\\.)?/, '|')}/
+            if room = @@list.find { |r| r.title.include?(Session.current.xml_data.room_title) and (foggy_exits or r.paths.include?(Session.current.xml_data.room_exits_string.strip) or r.tags.include?('random-paths')) and (Session.current.xml_data.room_window_disabled or r.description.any? { |desc| desc =~ desc_regex }) and (r.unique_loot.nil? or (r.unique_loot.to_a - GameObj.loot.to_a.collect { |obj| obj.name }).empty?) and (not r.check_location or r.location == Map.get_location) }
+               redo unless @@fuzzy_room_count == Session.current.xml_data.room_count
                if room.tags.any? { |tag| tag =~ /^(set desc on; )?peer [a-z]+ =~ \/.+\/$/ }
                   @@fuzzy_room_id = nil
                   return nil
@@ -154,7 +155,7 @@ class Map
                   return room
                end
             else
-               redo unless @@fuzzy_room_count == XMLData.room_count
+               redo unless @@fuzzy_room_count == Session.current.xml_data.room_count
                @@fuzzy_room_id = nil
                return nil
             end
@@ -164,7 +165,7 @@ class Map
 
    def Map.current_checksum()
       Digest::SHA2.hexdigest(
-         XMLData.room_count.to_s + XMLData.room_title + XMLData.room_description)
+         Session.current.xml_data.room_count.to_s + Session.current.xml_data.room_title + Session.current.xml_data.room_description)
    end
 
    def Map.cached?(checksum)
@@ -176,14 +177,14 @@ class Map
    end
 
    def self.updating?
-     XMLData.updating_room?
+     Session.current.xml_data.updating_room?
    end
 
    def Map.current()
       Map.load unless Map.loaded?
       Map::LOCK.synchronize {
          1.times {
-            sleep 0.1 while XMLData.updating_room?
+            sleep 0.1 while Session.current.xml_data.updating_room?
             starting_checksum = Map.current_checksum()
             return Map[@@cached_room_id] if Map.cached?(starting_checksum)
             @@cache_checksum = starting_checksum
@@ -192,7 +193,7 @@ class Map
             ending_checksum = Map.current_checksum
             # retry if we are mid room update
             redo unless starting_checksum.eql?(ending_checksum)
-            redo if XMLData.updating_room?
+            redo if Session.current.xml_data.updating_room?
             @@cached_room_id = current_room.nil? ? nil : current_room.id
             return current_room
          }
@@ -205,27 +206,27 @@ class Map
          if peer_tag = r.tags.find { |tag| tag =~ /^(set desc on; )?peer [a-z]+ =~ \/.+\/$/ }
             good = false
             need_desc, peer_direction, peer_requirement = /^(set desc on; )?peer ([a-z]+) =~ \/(.+)\/$/.match(peer_tag).captures
-            if need_desc
-               unless last_roomdesc = $_SERVERBUFFER_.reverse.find { |line| line =~ /<style id="roomDesc"\/>/ } and (last_roomdesc =~ /<style id="roomDesc"\/>[^<]/)
-                  put 'set description on'
-               end
+            if need_desc && Script.current && Script.current.session
+              unless last_roomdesc = Script.current.session.server_buffer.reverse.find { |line| line =~ /<style id="roomDesc"\/>/ } and (last_roomdesc =~ /<style id="roomDesc"\/>[^<]/)
+                put 'set description on'
+              end
             end
             script = Script.current
             save_want_downstream = script.want_downstream
             script.want_downstream = true
             squelch_started = false
             squelch_proc = proc { |server_string|
-               if squelch_started
-                  if server_string =~ /<prompt/
-                     DownstreamHook.remove('squelch-peer')
-                  end
-                  nil
-               elsif server_string =~ /^You peer/
-                  squelch_started = true
-                  nil
-               else
-                  server_string
-               end
+              if squelch_started
+                if server_string =~ /<prompt/
+                    DownstreamHook.remove('squelch-peer')
+                end
+                nil
+              elsif server_string =~ /^You peer/
+                squelch_started = true
+                nil
+              else
+                server_string
+              end
             }
             DownstreamHook.add('squelch-peer', squelch_proc)
             result = dothistimeout "peer #{peer_direction}", 3, /^You peer|^\[Usage: PEER/
@@ -248,17 +249,17 @@ class Map
          good
       }
       current_location = Map.get_location
-      if room = @@list.find { |r| (r.location == current_location) and r.title.include?(XMLData.room_title) and r.description.include?(XMLData.room_description.strip) and (r.unique_loot.nil? or (r.unique_loot.to_a - GameObj.loot.to_a.collect { |obj| obj.name }).empty?) and (r.paths.include?(XMLData.room_exits_string.strip) or r.tags.include?('random-paths')) and check_peer_tag.call(r) }
+      if room = @@list.find { |r| (r.location == current_location) and r.title.include?(Session.current.xml_data.room_title) and r.description.include?(Session.current.xml_data.room_description.strip) and (r.unique_loot.nil? or (r.unique_loot.to_a - GameObj.loot.to_a.collect { |obj| obj.name }).empty?) and (r.paths.include?(Session.current.xml_data.room_exits_string.strip) or r.tags.include?('random-paths')) and check_peer_tag.call(r) }
          return room
-      elsif room = @@list.find { |r| r.location.nil? and r.title.include?(XMLData.room_title) and r.description.include?(XMLData.room_description.strip) and (r.unique_loot.nil? or (r.unique_loot.to_a - GameObj.loot.to_a.collect { |obj| obj.name }).empty?) and (r.paths.include?(XMLData.room_exits_string.strip) or r.tags.include?('random-paths')) and check_peer_tag.call(r) }
+      elsif room = @@list.find { |r| r.location.nil? and r.title.include?(Session.current.xml_data.room_title) and r.description.include?(Session.current.xml_data.room_description.strip) and (r.unique_loot.nil? or (r.unique_loot.to_a - GameObj.loot.to_a.collect { |obj| obj.name }).empty?) and (r.paths.include?(Session.current.xml_data.room_exits_string.strip) or r.tags.include?('random-paths')) and check_peer_tag.call(r) }
          room.location = current_location
          return room
       else
-         title = [ XMLData.room_title ]
-         description = [ XMLData.room_description.strip ]
-         paths = [ XMLData.room_exits_string.strip ]
+         title = [ Session.current.xml_data.room_title ]
+         description = [ Session.current.xml_data.room_description.strip ]
+         paths = [ Session.current.xml_data.room_exits_string.strip ]
          room = Map.new(Map.get_free_id, title, description, paths, current_location)
-         identical_rooms = @@list.find_all { |r| (r.location != current_location) and r.title.include?(XMLData.room_title) and r.description.include?(XMLData.room_description.strip) and (r.unique_loot.nil? or (r.unique_loot.to_a - GameObj.loot.to_a.collect { |obj| obj.name }).empty?) and (r.paths.include?(XMLData.room_exits_string.strip) or r.tags.include?('random-paths')) }
+         identical_rooms = @@list.find_all { |r| (r.location != current_location) and r.title.include?(Session.current.xml_data.room_title) and r.description.include?(Session.current.xml_data.room_description.strip) and (r.unique_loot.nil? or (r.unique_loot.to_a - GameObj.loot.to_a.collect { |obj| obj.name }).empty?) and (r.paths.include?(Session.current.xml_data.room_exits_string.strip) or r.tags.include?('random-paths')) }
          if identical_rooms.length > 0
             room.check_location = true
             identical_rooms.each { |r| r.check_location = true }
@@ -291,7 +292,7 @@ class Map
    end
 
    def Map.json_files()
-      Dir["#{DATA_DIR}/#{XMLData.game}/map*.json"]
+      Dir["#{DATA_DIR}/#{Session.current.xml_data.game}/map*.json"]
    end
 
    def Map.load(filename=nil)
@@ -316,10 +317,10 @@ class Map
          filename ||= Map.json_files.sort.first
 
          if filename.nil?
-            respond "--- Lich: error: no map database found"
+            puts "--- Lich: error: no map database found"
             return false
          end
-         respond "-- Lich: loading mapdb from %s" % filename
+         puts "-- Lich: loading mapdb from %s" % filename
          File.open(filename) { |f|
             JSON.parse(f.read).each { |room|
                room['wayto'].keys.each { |k|
@@ -378,9 +379,9 @@ class Map
       }).delete_if { |a,b| b.nil? or (b.class == Array and b.empty?) }.to_json(args)
    end
 
-   def Map.save_json(filename="#{DATA_DIR}/#{XMLData.game}/map-#{Time.now.to_i}.json")
+   def Map.save_json(filename="#{DATA_DIR}/#{Session.current.xml_data.game}/map-#{Time.now.to_i}.json")
       if File.exists?(filename)
-         respond "File exists!  Backing it up before proceeding..."
+         puts "File exists!  Backing it up before proceeding..."
          begin
             File.open(filename, 'rb') { |infile|
                File.open("#{filename}.bak", "wb") { |outfile|
@@ -388,7 +389,7 @@ class Map
                }
             }
          rescue
-            respond "--- Lich: error: #{$!}\n\t#{$!.backtrace[0..1].join("\n\t")}"
+            puts "--- Lich: error: #{$!}\n\t#{$!.backtrace[0..1].join("\n\t")}"
             Lich.log "error: #{$!}\n\t#{$!.backtrace.join("\n\t")}"
          end
       end
@@ -524,7 +525,7 @@ class Map
          return previous, shortest_distances
       rescue
          echo "Map.dijkstra: error: #{$!}"
-         respond $!.backtrace
+         puts $!.backtrace
          nil
       end
    end
