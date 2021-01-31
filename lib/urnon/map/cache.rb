@@ -177,7 +177,8 @@ module Map
         paths:       session.xml_data.room_exits_string
       )
       return candidates.first if candidates.size.eql?(1)
-      fail "cannot handle multi-match fingerprints yet"
+      return nil if candidates.empty?
+      fail "cannot handle multi-match fingerprints yet\n:#{candidates.join("\n")}"
     end
 
     def self.fzf(val)

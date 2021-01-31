@@ -1,4 +1,7 @@
 require 'urnon/util/sessionize'
+require 'urnon/spells/registry'
+require 'urnon/spells/record'
+require 'urnon/spells/spell-song'
 
 class Spells
   extend Sessionize.new receiver: :spells
@@ -10,7 +13,7 @@ class Spells
   end
 
   def [](query)
-    Spell.of(session, query)
+    Spells::Registry.query(query)
   end
 end
 

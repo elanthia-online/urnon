@@ -1,5 +1,5 @@
 require 'spec_helper'
-require 'cabal/session/spells'
+require 'urnon/spells/spells'
 
 SPELL_FILE = File.join(__dir__, "mocks", "spells.xml")
 

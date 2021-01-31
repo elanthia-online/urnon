@@ -1,7 +1,16 @@
+require 'securerandom'
+
 module Scope
-  def self.thing()
-    respond "Scope#thing"
+  @uuid = SecureRandom.uuid
+
+  def self.export()
+    return self
+  end
+
+  def self.uuid()
+    @uuid
   end
 end
-Scope.thing()
+
+Scope.export
 

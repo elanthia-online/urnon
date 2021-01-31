@@ -1,4 +1,4 @@
-class Spellsong
+module Spellsong
   def self.cost
     self.renew_cost
   end

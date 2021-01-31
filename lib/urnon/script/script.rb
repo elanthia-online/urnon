@@ -220,15 +220,15 @@ class Script < Thread
     return s
   end
 
-  def self.runtime
-    runtime = GLOBAL_SCRIPT_CONTEXT.dup
+  def self.runtime(session)
+    session.sandbox
   end
 
   def self.of(args, session: nil)
     opts = {}
 
     # inherit if not explicitly passed
-    session = Script.current.session if session.nil? && Script.current && Script.current.session.is_a?(Urnon::Session)
+    session = Script.current.session if session.nil? && Script.current && Script.current.session.is_a?(Session)
 
     (name, scriptv, kwargs) = args
     opts.merge!(kwargs) if kwargs.is_a?(Hash)
@@ -248,15 +248,15 @@ class Script < Thread
 
     opts[:name] = Script.script_name opts[:file]
 
-    if Script.running.find { |s| s.name.eql?(opts[:name]) } and not opts[:force]
+    if Script.running.find { |s| s.name.eql?(opts[:name]) && s.session.eql?(session) } and not opts[:force]
       session.to_client "--- urnon: #{opts[:name]} is already running"
       return :already_running
     end
 
     Script.new(opts) { |script, runtime|
-      runtime = Script.runtime
+      runtime = Script.runtime(script.session)
       runtime.local_variable_set :script, script
-      runtime.eval(script.contents, script.file_name)
+      runtime.instance_eval(script.contents, script.file_name)
     }
   end
 
@@ -331,7 +331,6 @@ class Script < Thread
               script.exit_status = Status::Killed
             rescue Exception => e
               script.print_error(e)
-              respond(e.message, e.backtrace.join("\n"))
               script.exit_status = Status::Err
             else
               script.exit_status = Status::Ok if script.exit_status.nil?
@@ -349,8 +348,8 @@ class Script < Thread
   end
 
   def print_error(e)
-    puts "script:%s:error: %s" % [self.name, e.message]
-    puts "script:%s:backtrace:\n%s" % [self.name, e.backtrace.join("\n")]
+    self.session.to_client "script:%s:error: %s" % [self.name, e.message]
+    self.session.to_client "script:%s:backtrace:\n%s" % [self.name, e.backtrace.join("\n")]
   end
 
   def uptime()

@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require "urnon"
-require_relative "./mocks/lich"
 
 RSpec.configure do |config|
   # Enable flags like --only-failures and --next-failure

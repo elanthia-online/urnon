@@ -1,5 +1,7 @@
 require 'urnon/xml/xml-parser'
 require 'urnon/script/runtime'
+require 'urnon/script/sandbox'
+
 require 'urnon/session/gift'
 require 'urnon/session/game-obj'
 require 'urnon/session/stats'
@@ -8,7 +10,7 @@ require 'urnon/session/wounds'
 require 'urnon/session/scars'
 require 'urnon/session/society'
 require 'urnon/session/skills'
-require 'urnon/session/spells'
+require 'urnon/spells/spells'
 require 'urnon/map/room'
 
 class Session
@@ -375,6 +377,6 @@ class Session
   end
 
   def sandbox()
-    @sandbox ||= Class.new {}
+    (@sandbox ||= Sandbox.new {}).send(:binding)
   end
 end

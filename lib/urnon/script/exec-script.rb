@@ -17,7 +17,8 @@ class ExecScript < Script
     @id   = ExecScript.id()
     @name = "exec/#{@id}"
     super(opts.merge({name: @name, file_name: @name})) { |script|
-      Script.runtime.eval(contents, script.name)
+      Script.runtime(script.session)
+            .eval(contents, script.name)
     }
   end
 end
