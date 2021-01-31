@@ -1,5 +1,0 @@
-#!/usr/bin/env ruby
-require 'bundler/setup' if File.exist? File.expand_path('../../Gemfile', __FILE__)
-require 'cabal'
-require 'cabal/cli/cli'
-Cabal::CLI::Root.start

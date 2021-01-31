@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require "cabal"
+require "urnon"
 require_relative "./mocks/lich"
 
 RSpec.configure do |config|
