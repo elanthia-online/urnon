@@ -21,6 +21,25 @@ class Skills
     @session = session
   end
 
+  def Skills.serialize
+     [@twoweaponcombat, @armoruse, @shielduse, @combatmaneuvers, @edgedweapons, @bluntweapons, @twohandedweapons, @rangedweapons, @thrownweapons, @polearmweapons, @brawling, @ambush, @multiopponentcombat, @combatleadership, @physicalfitness, @dodging, @arcanesymbols, @magicitemuse, @spellaiming, @harnesspower, @emc, @mmc, @smc, @elair, @elearth, @elfire, @elwater, @slblessings, @slreligion, @slsummoning, @sldemonology, @slnecromancy, @mldivination, @mlmanipulation, @mltelepathy, @mltransference, @mltransformation, @survival, @disarmingtraps, @pickinglocks, @stalkingandhiding, @perception, @climbing, @swimming, @firstaid, @trading, @pickpocketing]
+  end
+
+  def Skills.load_serialized=(array)
+     @twoweaponcombat, @armoruse, @shielduse, @combatmaneuvers,
+     @edgedweapons, @bluntweapons, @twohandedweapons, @rangedweapons,
+     @thrownweapons, @polearmweapons, @brawling,
+     @ambush, @multiopponentcombat, @combatleadership,
+     @physicalfitness, @dodging, @arcanesymbols, @magicitemuse,
+     @spellaiming, @harnesspower,
+     @emc, @mmc, @smc, @elair, @elearth, @elfire, @elwater, @slblessings, @slreligion,
+     @slsummoning, @sldemonology, @slnecromancy,
+     @mldivination, @mlmanipulation, @mltelepathy, @mltransference,
+     @mltransformation, @survival, @disarmingtraps, @pickinglocks,
+     @stalkingandhiding, @perception, @climbing, @swimming,
+     @firstaid, @trading, @pickpocketing = array
+  end
+
   def Skills.to_bonus(ranks)
     bonus = 0
     while ranks > 0

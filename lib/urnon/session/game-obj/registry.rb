@@ -42,6 +42,10 @@ class GameObj
       end
     end
 
+    def containers
+      @contents
+    end
+
     def new_npc(session, id, noun, name, status=nil)
       obj = GameObj.new(session, id, noun, name)
       @npcs.push(obj)

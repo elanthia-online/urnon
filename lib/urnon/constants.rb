@@ -18,7 +18,7 @@ $stdout.sync = true
 # lich globals
 LICH_VERSION = '4.6.55'.freeze
 TESTING = false
-$VERBOSE = nil
+
 $link_highlight_start = ''
 $link_highlight_end = ''
 $speech_highlight_start = ''
@@ -27,6 +27,4 @@ $SEND_CHARACTER = '>'
 $cmd_prefix = '<c>'
 $clean_lich_char = ';' # fixme
 $lich_char = Regexp.escape($clean_lich_char)
-# deprecated stuff
-$version = LICH_VERSION
-$room_count = 0
+

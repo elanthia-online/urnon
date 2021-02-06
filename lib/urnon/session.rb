@@ -10,8 +10,10 @@ require 'urnon/session/wounds'
 require 'urnon/session/scars'
 require 'urnon/session/society'
 require 'urnon/session/skills'
+require 'urnon/session/cman'
 require 'urnon/spells/spells'
 require 'urnon/map/room'
+
 
 class Session
   SESSIONS ||= {}
@@ -47,9 +49,11 @@ class Session
               :game_host, :game_port,
               :game_socket, :game_thread,
               :client_thread, :client_sock, :client_port,
+              :real_port,
               :server_buffer, :client_buffer, :lock, :last_recv,
               :login_time,  :xml_data, :gift, :game_obj_registry,
-              :stats, :char, :wounds, :scars, :society, :skills
+              :stats, :char, :wounds, :scars, :society, :skills,
+              :cman
 
   def initialize(game_host, game_port, client_port)
     @lock      = Mutex.new
@@ -64,9 +68,10 @@ class Session
     @society           = Society.new(self)
     @skills            = Skills.new(self)
     @spells            = Spells.new(self)
+    @room              = Room.new(self)
+    @cman              = CMan.new
     # must be attached last because of former Lich hijinx
     @char              = Char.new(self)
-    @room              = Room.new(self)
 
     # previous Game stuff
     @buffer    = SharedBuffer.new
@@ -95,22 +100,10 @@ class Session
   end
 
   def connect_to_game()
+    pp "connecting to %s:%s" % [self.game_host, self.game_port]
     @game_socket = TCPSocket.open(self.game_host, self.game_port)
     @game_socket.setsockopt(Socket::SOL_SOCKET, Socket::SO_KEEPALIVE, true)
     @game_socket.sync = true
-    # heart-beat check for the game socket
-    @heartbeat = Thread.new {
-      @last_recv = Time.now
-      loop {
-        if (@last_recv + 300) < Time.now
-          Lich.log "#{Time.now}: error: nothing recieved from game server in 5 minutes"
-          @game_thread.kill rescue nil
-          break
-        end
-        sleep (300 - (Time.now - @last_recv))
-        sleep 1
-      }
-    }
 
     @game_thread = Thread.new {
       begin
@@ -126,7 +119,6 @@ class Session
             if incoming =~ /<pushStream id="familiar" \/><prompt time="[0-9]+">&gt;<\/prompt>/ # Cry For Help spell is broken...
               incoming.sub!('<pushStream id="familiar" />', '')
             end
-            #pp "incoming=%s" % incoming
             self.server_buffer.push(incoming)
             if alt_string = DownstreamHook.run(incoming, self)
               #pp alt_string
@@ -235,10 +227,11 @@ class Session
   end
 
   def close
-    return unless @game_socket
-    @game_socket.close rescue nil
-    @game_thread.kill rescue nil
-    @heartbeat.kill rescue nil
+    self.game_socket.close rescue nil
+    self.game_thread.kill rescue nil
+    self.client_sock.close rescue nil
+    self.client_thread.kill rescue nil
+    self.dispose
   end
 
   def _puts(str)
@@ -277,12 +270,12 @@ class Session
     @client_thread = Thread.new {
       loop {
         begin
-          server = TCPServer.new('127.0.0.1', @client_port)
-          real_port = server.addr[1]
+          server    = TCPServer.new('127.0.0.1', @client_port)
+          @real_port = server.addr[1]
           sleep 0.1 while self.name.empty?
-          $0 = "urnon character=%s port=%s" % [self.name, real_port]
-          $stdout.write("/urnon UP %s\n" %
-            {character: self.name, port: real_port}.to_json)
+          $stdout << "/urnon UP name=%{character} port=%{port}\n" % {
+            character: self.name,
+            port:      self.real_port}
           @client_sock = SynchronizedSocket.new(server.accept)
           @client_sock.sync = true
         rescue

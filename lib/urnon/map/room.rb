@@ -10,13 +10,20 @@ class Room
   attr_reader :session
   def initialize(session)
     @session = session
+    Map::Cache.load()
   end
 
   def current()
+    Map::Cache.load()
     Map::Cache.current_room(@session)
   end
 
   def [](val)
+    Map::Cache.load()
     Map::Cache.fzf(val)
+  end
+
+  def list
+    Map::Cache.to_a
   end
 end

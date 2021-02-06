@@ -168,7 +168,6 @@ module Urnon
             if attributes['id'] == 'room'
                 unless @room_window_disabled
                   @room_count += 1
-                  $room_count += 1
                   @room_updating = false
                 end
             end
@@ -206,7 +205,6 @@ module Urnon
                 @session.game_obj_registry.clear_room_desc
             elsif attributes['id'] == 'room extra' # DragonRealms
                 @room_count += 1
-                $room_count += 1
                 @room_updating = false
             # elsif attributes['id'] == 'sprite'
             end
@@ -648,7 +646,6 @@ module Urnon
             @session.puts "\034GSj#{sprintf('%-20s', gsl_exits)}\r\n"
             gsl_exits = nil
             @room_count += 1
-            $room_count += 1
             @room_updating = false
           end
           @last_tag = @active_tags.pop

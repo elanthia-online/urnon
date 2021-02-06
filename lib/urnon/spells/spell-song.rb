@@ -50,6 +50,26 @@ module Spellsong
     [6 + ((Spells.bard - 6) / 4),(6 + ((Spells.bard - 6) / 4) / 2).round]
   end
 
+  def Spellsong.timeleft
+     (Spellsong.duration - ((Time.now - @@renewed) % Spellsong.duration)) / 60.0
+  end
+
+  def Spellsong.duration
+     total = 120
+     1.upto(Stats.level.to_i) { |n|
+        if n < 26
+           total += 4
+        elsif n < 51
+           total += 3
+        elsif n < 76
+           total += 2
+        else
+           total += 1
+        end
+     }
+     total + Stats.log[1].to_i + (Stats.inf[1].to_i * 3) + (Skills.mltelepathy.to_i * 2)
+  end
+
   def self.mana_cost
     [18,15]
   end
@@ -72,5 +92,9 @@ module Spellsong
 
   def self.sword_cost
     [25,15]
+  end
+
+  def self.load_serialized=(...)
+    # todo: deprecated
   end
 end

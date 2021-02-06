@@ -16,7 +16,9 @@ module Urnon
                     aliases: "-c"
 
       def login()
-        options.chars.map { |name| Urnon.init(name) }
+        Thread.main.priority = -10
+        session_threads = options.chars.map { |name| Urnon.init(name) }
+        sleep 0.1 while session_threads.any?(&:alive?)
       end
 
       register CLI::Account, 'account', 'account [COMMAND]', 'account subcommands'

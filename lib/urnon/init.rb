@@ -61,7 +61,6 @@ module Urnon
 
   def self.init(character)
     Urnon.setup
-
     (account, account_info) = Urnon::XDG.account_for(character)
 
     account = account || ENV["ACCOUNT"]
@@ -81,19 +80,24 @@ module Urnon
       password:  ENV["PASSWORD"] || argv.password,
       game_code: argv.game_code,
       character: argv.character)
-    #
-    # connect to GSIV only for right now
-    #
-    session = Session.open(
-      login_info["gamehost"],
-      login_info["gameport"],
-      argv.port)
-    session.init(login_info["key"])
-    Thread.current.priority = -10
-    Gtk.main
-    Script.list.each { |script| script.kill if script.session.eql?(session) }
-    session.client_thread.kill rescue nil
-    session.close
-    wait_until {session.closed?}
+
+    pp "login=%s" % argv.character
+
+    Thread.new {
+      #
+      # connect to GSIV only for right now
+      #
+      session = Session.open(
+        login_info["gamehost"],
+        login_info["gameport"],
+        argv.port)
+
+      session.init(login_info["key"])
+      sleep 0.1 until session.closed?
+      #Thread.current.priority = -10
+      #Gtk.main
+      Script.list.each { |script| script.kill if script.session.eql?(session) }
+      session.close
+    }
   end
 end

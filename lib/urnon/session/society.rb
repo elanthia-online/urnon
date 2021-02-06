@@ -28,4 +28,12 @@ class Society
   def task
     Session.current.xml_data.society_task
   end
+
+  def serialize
+    [@status,@rank]
+  end
+
+  def load_serialized=(val)
+    @status,@rank = val
+  end
 end

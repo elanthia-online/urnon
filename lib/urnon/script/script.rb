@@ -4,6 +4,7 @@ require "urnon/util/limited-array"
 require "urnon/util/format"
 require "urnon/ext/thread"
 require 'urnon/script/runtime'
+require 'urnon/script/opts'
 
 GLOBAL_SCRIPT_CONTEXT = binding()
 
@@ -273,7 +274,7 @@ class Script < Thread
                 :no_pause_all, :no_kill_all,
                 :downstream_buffer, :upstream_buffer, :unique_buffer,
                 :die_with, :watchfor, :command_line, :ignore_pause,
-                :_value, :exit_status
+                :_value, :exit_status, :opts
 
   def initialize(args, &block)
     @file_name = args[:file]
@@ -294,6 +295,7 @@ class Script < Thread
       else
         []
       end
+    @opts  = Opts.parse(@vars)
     @quiet = args.fetch(:quiet, false)
     @downstream_buffer = LimitedArray.new
     @want_downstream = true

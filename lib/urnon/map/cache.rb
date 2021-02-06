@@ -176,9 +176,10 @@ module Map
         description: session.xml_data.room_description,
         paths:       session.xml_data.room_exits_string
       )
-      return candidates.first if candidates.size.eql?(1)
       return nil if candidates.empty?
-      fail "cannot handle multi-match fingerprints yet\n:#{candidates.join("\n")}"
+      return candidates.first if candidates.size.eql?(1)
+      # todo: handle peer case
+      return candidates.first
     end
 
     def self.fzf(val)
