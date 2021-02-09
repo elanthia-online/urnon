@@ -14,7 +14,7 @@ require 'digest/md5'
 require 'openssl'
 require 'fileutils'
 # lich globals
-LICH_VERSION = '4.6.55'
+CABAL_VERSION = '1.0.1'
 TESTING = false
 $VERBOSE = nil
 $link_highlight_start = ''
@@ -26,7 +26,7 @@ $cmd_prefix = '<c>'
 $clean_lich_char = ';' # fixme
 $lich_char = Regexp.escape($clean_lich_char)
 # deprecated stuff
-$version = LICH_VERSION
+$version = CABAL_VERSION
 $room_count = 0
 Dir.chdir(__dir__)
 module Cabal; end
@@ -100,56 +100,56 @@ end
 
 Lich.init_db
 argv = Opts.parse(ARGV)
-argv.character or fail Exception, "--character= is required"
-(account, account_info) = Cabal::XDG.account_for(argv.character)
-# merge the options for login
-if account
-  argv = OpenStruct.new(
-    {  account: account,
-     game_code: (argv.game || "GS3"),
-     character: argv.character}.merge(account_info))
-end
+if argv.character # or fail Exception, "--character= is required"
+  (account, account_info) = Cabal::XDG.account_for(argv.character)
+  # merge the options for login
+  if account
+    argv = OpenStruct.new(
+      {  account: account,
+      game_code: (argv.game || "GS3"),
+      character: argv.character}.merge(account_info))
+  end
 
-# use env variables so they are not in logs
-ENV["PASSWORD"] or argv.password or fail Exception, "env variable PASSWORD is required"
-ENV["ACCOUNT"]  or argv.account or fail Exception, "env variable ACCOUNT is required"
+  # use env variables so they are not in logs
+  ENV["PASSWORD"] or argv.password or fail Exception, "env variable PASSWORD is required"
+  ENV["ACCOUNT"]  or argv.account or fail Exception, "env variable ACCOUNT is required"
 
-PORT = (argv.port || 0).to_i
+  PORT = (argv.port || 0).to_i
 
-login_info = EAccess.auth(
-  account:   ENV["ACCOUNT"] || argv.account,
-  password:  ENV["PASSWORD"] || argv.password,
-  game_code: argv.game_code,
-  character: argv.character)
+  login_info = EAccess.auth(
+    account:   ENV["ACCOUNT"] || argv.account,
+    password:  ENV["PASSWORD"] || argv.password,
+    game_code: argv.game_code,
+    character: argv.character)
 
-$_SERVERBUFFER_ = LimitedArray.new
-$_SERVERBUFFER_.max_size = 400
-$_CLIENTBUFFER_ = LimitedArray.new
-$_CLIENTBUFFER_.max_size = 100
-#
-# connect to GSIV only for right now
-#
-Game.open(login_info["gamehost"], login_info["gameport"])
-#
-# send the login key
-#
-Game._puts(login_info["key"] + "\n")
-#
-# send version string
-#
-client_string = "/FE:WIZARD /VERSION:1.0.1.22 /P:#{RUBY_PLATFORM} /XML"
-$_CLIENTBUFFER_.push(client_string.dup)
-Game._puts(client_string)
-#
-# tell the server we're ready
-#
-2.times {
-  sleep 0.3
-  $_CLIENTBUFFER_.push("<c>\r\n")
-  Game._puts("<c>")
-}
-$login_time = Time.now
-detachable_client_thread = Thread.new {
+  $_SERVERBUFFER_ = LimitedArray.new
+  $_SERVERBUFFER_.max_size = 400
+  $_CLIENTBUFFER_ = LimitedArray.new
+  $_CLIENTBUFFER_.max_size = 100
+  #
+  # connect to GSIV only for right now
+  #
+  Game.open(login_info["gamehost"], login_info["gameport"])
+  #
+  # send the login key
+  #
+  Game._puts(login_info["key"] + "\n")
+  #
+  # send version string
+  #
+  client_string = "/FE:WIZARD /VERSION:1.0.1.22 /P:#{RUBY_PLATFORM} /XML"
+  $_CLIENTBUFFER_.push(client_string.dup)
+  Game._puts(client_string)
+  #
+  # tell the server we're ready
+  #
+  2.times {
+    sleep 0.3
+    $_CLIENTBUFFER_.push("<c>\r\n")
+    Game._puts("<c>")
+  }
+  $login_time = Time.now
+  detachable_client_thread = Thread.new {
     loop {
       begin
         server = TCPServer.new('127.0.0.1', PORT)
@@ -228,7 +228,13 @@ detachable_client_thread = Thread.new {
       end
       sleep 0.1
     }
-}
+  }
+elsif ARGV.empty? or argv.gui
+  require_relative("./lib/login")
+  Login
+else
+  pp "Clueless here, boss! Seek help!"
+end
 
 Thread.current.priority = -10
 Gtk.main

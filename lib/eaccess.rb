@@ -4,7 +4,7 @@ require "socket"
 module EAccess
   PEM = File.join(__dir__, "..", "simu.pem")
   PACKET_SIZE = 8192
-  
+
   def self.download_pem()
     conn = self.socket()
     File.write(EAccess::PEM, conn.peer_cert)
@@ -30,9 +30,9 @@ module EAccess
     return ssl_socket
   end
 
-  def self.auth(password:, account:, character:, game_code: "GS3")
+  def self.auth(password:, account:, character: nil, game_code: "GS3", legacy: false)
     conn = EAccess.socket()
-    # it is vitally important to verify self-signed certs 
+    # it is vitally important to verify self-signed certs
     # because there is no chain-of-trust for them
     EAccess.verify_pem(conn)
     conn.puts "K\n"
@@ -50,37 +50,67 @@ module EAccess
     response = EAccess.read(conn)
     fail Exception, response unless response =~ /^M\t/
     #pp "M:response=%s" % response
-    conn.puts "F\t#{game_code}\n"
-    response = EAccess.read(conn)
-    fail Exception, response unless response =~ /NORMAL|PREMIUM|TRIAL|INTERNAL|FREE/
-    #pp "F:response=%s" % response
-    conn.puts "G\t#{game_code}\n"
-    EAccess.read(conn)
-    #pp "G:response=%s" % response
-    conn.puts "P\t#{game_code}\n"
-    EAccess.read(conn)
-    #pp "P:response=%s" % response
-    conn.puts "C\n"
-    response = EAccess.read(conn)
-    #pp "C:response=%s" % response
-    char_code = response.sub(/^C\t[0-9]+\t[0-9]+\t[0-9]+\t[0-9]+[\t\n]/, '')
-      .scan(/[^\t]+\t[^\t^\n]+/)
-      .find { |c| c.split("\t")[1] == character }
-      .split("\t")[0]
-    conn.puts "L\t#{char_code}\tSTORM\n"
-    response = EAccess.read(conn)
-    fail Exception, response unless response =~ /^L\t/
-    #pp "L:response=%s" % response
+
+    unless legacy
+      conn.puts "F\t#{game_code}\n"
+      response = EAccess.read(conn)
+      fail Exception, response unless response =~ /NORMAL|PREMIUM|TRIAL|INTERNAL|FREE/
+      #pp "F:response=%s" % response
+      conn.puts "G\t#{game_code}\n"
+      EAccess.read(conn)
+      #pp "G:response=%s" % response
+      conn.puts "P\t#{game_code}\n"
+      EAccess.read(conn)
+      #pp "P:response=%s" % response
+      conn.puts "C\n"
+      response = EAccess.read(conn)
+      #pp "C:response=%s" % response
+      char_code = response.sub(/^C\t[0-9]+\t[0-9]+\t[0-9]+\t[0-9]+[\t\n]/, '')
+        .scan(/[^\t]+\t[^\t^\n]+/)
+        .find { |c| c.split("\t")[1] == character }
+        .split("\t")[0]
+      conn.puts "L\t#{char_code}\tSTORM\n"
+      response = EAccess.read(conn)
+      fail Exception, response unless response =~ /^L\t/
+      #pp "L:response=%s" % response
+      conn.close unless conn.closed?
+      login_info = Hash[response.sub(/^L\tOK\t/, '')
+        .split("\t")
+        .map {|kv|
+          k,v = kv.split("=")
+          [k.downcase, v]
+        }]
+    else
+      login_info = Array.new
+      for game in response.sub(/^M\t/, '').scan(/[^\t]+\t[^\t^\n]+/)
+          game_code, game_name = game.split("\t")
+        #pp "M:response = %s" % response
+        conn.puts "N\t#{game_code}\n"
+        response = EAccess.read(conn)
+        if response =~ /STORM/
+          conn.puts "F\t#{game_code}\n"
+          response = EAccess.read(conn)
+          if response =~ /NORMAL|PREMIUM|TRIAL|INTERNAL|FREE/
+            conn.puts "G\t#{game_code}\n"
+            EAccess.read(conn)
+            conn.puts "P\t#{game_code}\n"
+            EAccess.read(conn)
+            conn.puts "C\n"
+            response = EAccess.read(conn)
+            for code_name in response.sub(/^C\t[0-9]+\t[0-9]+\t[0-9]+\t[0-9]+[\t\n]/, '').scan(/[^\t]+\t[^\t^\n]+/)
+                char_code, char_name = code_name.split("\t")
+              hash = {:game_code => "#{game_code}", :game_name => "#{game_name}",
+                      :char_code => "#{char_code}", :char_name => "#{char_name}"}
+              login_info.push(hash)
+            end
+          end
+        end
+      end
+    end
     conn.close unless conn.closed?
-    login_info = Hash[response.sub(/^L\tOK\t/, '')
-      .split("\t")
-      .map {|kv| 
-        k,v = kv.split("=")
-        [k.downcase, v]
-      }]
     return login_info
   end
-
+  
   def self.read(conn)
     conn.sysread(PACKET_SIZE)
   end
