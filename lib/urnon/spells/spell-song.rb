@@ -50,11 +50,15 @@ module Spellsong
     [6 + ((Spells.bard - 6) / 4),(6 + ((Spells.bard - 6) / 4) / 2).round]
   end
 
-  def Spellsong.timeleft
-     (Spellsong.duration - ((Time.now - @@renewed) % Spellsong.duration)) / 60.0
+  def self.renewed()
+    Time.now # todo: fix this
   end
 
-  def Spellsong.duration
+  def self.timeleft
+     (Spellsong.duration - ((Time.now - self.renewed) % Spellsong.duration)) / 60.0
+  end
+
+  def self.duration
      total = 120
      1.upto(Stats.level.to_i) { |n|
         if n < 26

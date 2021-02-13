@@ -1,6 +1,7 @@
 require 'urnon/lich/string-proc'
 require 'urnon/map/room'
 require 'digest'
+require 'urnon/util/format'
 
 module Map
   module Cache
@@ -10,8 +11,12 @@ module Map
     @by_id  ||= {}
     # for O(1) lookups by tag
     @by_tag ||= {}
+
+    @by_title ||= {}
+    @by_description ||= {}
     # invalid dropped rooms during decoding
     @dropped ||= {}
+
 
     class << self
       include Enumerable
@@ -31,9 +36,7 @@ module Map
 
     def self.clear
       self.access {
-        @by_id.clear
-        @by_tag.clear
-        @by_fingerprint.clear
+        [@by_id, @by_tag, @by_fingerprint, @by_title, @by_description, @dropped].each(&:clear)
       }
     end
 
@@ -42,11 +45,13 @@ module Map
     end
 
     def self.json_files()
-      Dir["#{DATA_DIR}/#{Session.current.xml_data.game}/map*.json"]
+      Dir["#{DATA_DIR}/#{Session.current.xml_data.game}/map*.json"].sort#.reverse
     end
 
     def self.load(**kwargs)
       file = kwargs[:file]
+      return true if self.size > 0 && !kwargs.fetch(:force, false)
+      self.clear  if self.size > 0
       return self.load_json(**kwargs) if file
 
       if json_files.empty?
@@ -54,11 +59,10 @@ module Map
         return false
       end
 
-      for file in self.json_files()
-        return true if self.load_json(file: file)
-      end
-
-      return false
+      map_candidate = self.json_files.find {|file| File.exist?(file) }
+      return false if map_candidate.nil?
+      load_time = Benchmark.realtime { self.load_json(file: map_candidate) }
+      puts "loaded %s in %s" % [map_candidate, Format.time(load_time)]
     end
 
     def self.access()
@@ -67,17 +71,6 @@ module Map
 
     def self.load_json(file: nil, limit: 100_000)
       self.access {
-        return true if self.size > 0
-
-        file ||= self.json_files.sort.first
-
-        if file.nil?
-          puts "--- Lich: error: no map database found"
-          return false
-        end
-
-        puts "-- Lich: loading mapdb from %s" % file
-
         f = File.open(file)
         JSON.parse(f.read).slice(0, limit).each { |room|
           room['wayto'].keys.each { |k|
@@ -91,7 +84,6 @@ module Map
               room['timeto'][k] = StringProc.new(room['timeto'][k][3..-1])
             end
           }
-
           self.insert Room::Record.new(**room)
         }
       }
@@ -108,6 +100,16 @@ module Map
     def self.insert(room)
       return self.drop(room) unless room.valid?
       @by_id[room.id] = room
+      room.title.map(&:strip).each {|title|
+        @by_title[title] ||= []
+        @by_title[title] << room
+      }
+
+      room.description.map(&:strip).each {|desc|
+        @by_description[desc] ||= []
+        @by_description[desc] << room
+      }
+
       build_tag_search(room) if room.tags.is_a?(Array) && room.tags.size > 0
       begin
         build_finger_print_search(room)
@@ -138,9 +140,7 @@ module Map
     end
 
     def self.fingerprint_of(title:, description:, paths:)
-      Digest::MD5.hexdigest [title, description, paths]
-        .flatten
-        .compact
+      [title, description, paths]
         .map(&:strip)
         .join("/")
     end
@@ -152,12 +152,24 @@ module Map
       }
     end
 
-    def self.find_by_id(id)
-      @by_id[id.to_i]
+    def self.by_id
+      @by_id
     end
 
-    def self.find_by_tag(tag)
-      @by_tag[tag.to_s]
+    def self.by_tag
+      @by_tag
+    end
+
+    def self.by_title
+      @by_title
+    end
+
+    def self.by_description
+      @by_description
+    end
+
+    def self.by_fingerprint
+      @by_fingerprint
     end
 
     def self.find_by_fingerprint(**context)
@@ -171,21 +183,25 @@ module Map
     end
 
     def self.current_room(session)
+      title = session.xml_data.room_title.strip
+
       candidates = self.find_by_fingerprint(
-        title:       session.xml_data.room_title,
-        description: session.xml_data.room_description,
-        paths:       session.xml_data.room_exits_string
+        title:       title,
+        description: session.xml_data.room_description.strip,
+        paths:       session.xml_data.room_exits_string.strip
       )
-      return nil if candidates.empty?
-      return candidates.first if candidates.size.eql?(1)
+
+      return candidates.first if candidates.size > 0
+      title_match = @by_title[title]
+      return title_match.first if title_match.size.eql?(1)
       # todo: handle peer case
-      return candidates.first
+      return nil
     end
 
     def self.fzf(val)
       return nil if val.nil?
       if (val.class == Fixnum) or (val.class == Bignum) or val =~ /^[0-9]+$/
-        self.find_by_id(val.to_i)
+        self.by_id[val.to_i]
       else
         chkre = /#{val.strip.sub(/\.$/, '').gsub(/\.(?:\.\.)?/, '|')}/i
         chk = /#{Regexp.escape(val.strip)}/i

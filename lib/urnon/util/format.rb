@@ -1,6 +1,6 @@
 module Format
   def self.time(seconds)
-    return milliseconds(seconds) if seconds < 1
+    return milliseconds(seconds) if seconds < 5
     days    = (seconds / 86_400).floor
     seconds = seconds - (days * 86_400)
     hours   = (seconds / 3_600).floor

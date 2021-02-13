@@ -10,7 +10,6 @@ class Room
   attr_reader :session
   def initialize(session)
     @session = session
-    Map::Cache.load()
   end
 
   def current()
@@ -24,6 +23,7 @@ class Room
   end
 
   def list
+    Map::Cache.load()
     Map::Cache.to_a
   end
 end
