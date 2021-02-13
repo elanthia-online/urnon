@@ -1,6 +1,2 @@
 $i = 0
-loop {
-  ttl = Time.now + 10
-  sleep 0.1 while true
-  $i = 1
-}
+loop { sleep 0.1 }

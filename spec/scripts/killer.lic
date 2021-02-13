@@ -1,0 +1,5 @@
+to_kill = Script.current.vars.last
+Script.running?(to_kill) or fail "%s not running" % to_kill
+Script.kill(to_kill)
+Script.running?(to_kill) and fail "%s was not killed" % to_kill
+{ok: :ran}

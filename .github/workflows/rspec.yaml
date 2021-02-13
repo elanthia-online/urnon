@@ -15,6 +15,8 @@ jobs:
     # change this to (see https://github.com/ruby/setup-ruby#versioning):
       uses: ruby/setup-ruby@v1
     - name: Install dependencies
-      run: bundle install --without gui
+      run: |
+        sudo apt-get install libcairo2-dev
+        bundle install --without gui
     - name: Run Rspec Tests
       run: rspec --format doc

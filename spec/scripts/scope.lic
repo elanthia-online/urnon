@@ -1,0 +1,16 @@
+require 'securerandom'
+
+module Scope
+  @uuid = SecureRandom.uuid
+
+  def self.export()
+    return self
+  end
+
+  def self.uuid()
+    @uuid
+  end
+end
+
+Scope.export
+

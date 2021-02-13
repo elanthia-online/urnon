@@ -1,1 +1,1 @@
-raise :death
+raise Exception, "it's dead jim"
