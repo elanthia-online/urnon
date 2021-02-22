@@ -17,7 +17,6 @@ Gem::Specification.new do |spec|
   spec.metadata["source_code_uri"] = "https://github.com/elanthia-online/urnon"
   #spec.metadata["changelog_uri"] = "TODO: Put your gem's CHANGELOG.md URL here."
 
-  spec.add_dependency "gtk3"
   spec.add_dependency "xdg"
   spec.add_dependency "thor"
   spec.add_dependency "rexml"

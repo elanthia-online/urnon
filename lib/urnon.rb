@@ -1,7 +1,6 @@
 require 'bundler/setup'
 # install bundler managed deps
 require 'sequel'
-require 'gtk3'
 require 'xdg'
 require 'rexml/document'
 require 'rexml/streamlistener'

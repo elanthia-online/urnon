@@ -30,13 +30,10 @@ require 'urnon/lich/decoders'
 # map
 require 'urnon/map/room'
 
-
 require 'urnon/util/synchronized-socket'
 require 'urnon/util/limited-array'
 require 'urnon/util/format'
 require 'urnon/util/shared-buffer'
-
-require 'urnon/lich/gtk3'
 
 # - Migrated Lich Utils
 require 'urnon/session' # was Game
