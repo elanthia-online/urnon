@@ -71,13 +71,13 @@ class Room
           until pq.size == 0
             v = pq.shift
             visited[v] = true
-            Map.find_by_id(v).wayto.keys.each { |adj_room|
+            Map.by_id[v].wayto.keys.each { |adj_room|
               adj_room_i = adj_room.to_i
               unless visited[adj_room_i]
-                if Map.find_by_id(v).timeto[adj_room].class == Proc
-                  nd = Map.find_by_id(v).timeto[adj_room].call
+                if Map.by_id[v].timeto[adj_room].class == Proc
+                  nd = Map.by_id[v].timeto[adj_room].call
                 else
-                  nd = Map.find_by_id(v).timeto[adj_room]
+                  nd = Map.by_id[v].timeto[adj_room]
                 end
                 if nd
                   nd += shortest_distances[v]
@@ -95,13 +95,13 @@ class Room
             v = pq.shift
             break if v == destination
             visited[v] = true
-            Map.find_by_id(v).wayto.keys.each { |adj_room|
+            Map.by_id[v].wayto.keys.each { |adj_room|
               adj_room_i = adj_room.to_i
               unless visited[adj_room_i]
-                if Map.find_by_id(v).timeto[adj_room].class == Proc
-                  nd = Map.find_by_id(v).timeto[adj_room].call
+                if Map.by_id[v].timeto[adj_room].class == Proc
+                  nd = Map.by_id[v].timeto[adj_room].call
                 else
-                  nd = Map.find_by_id(v).timeto[adj_room]
+                  nd = Map.by_id[v].timeto[adj_room]
                 end
                 if nd
                   nd += shortest_distances[v]
@@ -120,13 +120,13 @@ class Room
             v = pq.shift
             break if dest_list.include?(v) and (shortest_distances[v] < 20)
             visited[v] = true
-            Map.find_by_id(v).wayto.keys.each { |adj_room|
+            Map.by_id[v].wayto.keys.each { |adj_room|
               adj_room_i = adj_room.to_i
               unless visited[adj_room_i]
-                if Map.find_by_id(v).timeto[adj_room].class == Proc
-                  nd = Map.find_by_id(v).timeto[adj_room].call
+                if Map.by_id[v].timeto[adj_room].class == Proc
+                  nd = Map.by_id[v].timeto[adj_room].call
                 else
-                  nd = Map.find_by_id(v).timeto[adj_room]
+                  nd = Map.by_id[v].timeto[adj_room]
                 end
                 if nd
                   nd += shortest_distances[v]
@@ -161,7 +161,7 @@ class Room
     end
 
     def find_nearest_by_tag(tag_name)
-      target_list = Map.find_by_tag(tag_name.to_s).map(&:id)
+      target_list = Map.by_tag.fetch(tag_name.to_s, []).map(&:id)
       _previous, shortest_distances = Map.dijkstra(@id, target_list)
       if target_list.include?(@id)
         @id

@@ -24,8 +24,6 @@ require 'urnon/settings/vars'
 require 'urnon/settings/user-vars'
 ## Lich stuff
 require 'urnon/lich/string-proc'
-require 'urnon/lich/upstream-hook'
-require 'urnon/lich/downstream-hook'
 require 'urnon/lich/watchfor'
 require 'urnon/lich/decoders'
 
@@ -83,6 +81,7 @@ module Urnon
 
     pp "login=%s" % argv.character
 
+
     Thread.new {
       #
       # connect to GSIV only for right now
@@ -93,9 +92,8 @@ module Urnon
         argv.port)
 
       session.init(login_info["key"])
+      Thread.current.priority = -5
       sleep 0.1 until session.closed?
-      #Thread.current.priority = -10
-      #Gtk.main
       Script.list.each { |script| script.kill if script.session.eql?(session) }
       session.close
     }

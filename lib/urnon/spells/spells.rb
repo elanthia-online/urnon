@@ -6,7 +6,7 @@ require 'urnon/spells/spell-song'
 class Spells
   extend Sessionize.new receiver: :spells
 
-  attr_accessor :session,
+  attr_accessor :session, :tracking,
                 :minorelemental, :minormental, :minorspiritual,
                 :majorelemental, :majorspiritual,
                 :wizard , :sorcerer , :ranger , :paladin , :empath , :cleric , :bard
@@ -14,6 +14,7 @@ class Spells
   def initialize(session)
     self.instance_variables.each do |var| self.instance_variable_set(var, 0) end
     @session = session
+    @tracking  = {}
     self.load
   end
 
@@ -52,7 +53,9 @@ class Spells
   end
 
   def active
-    self.list.select(&:active?)
+    @tracking
+      .select {|num, expiry| expiry > Time.now }
+      .map {|num, expiry| Spell[num] }
   end
 end
 

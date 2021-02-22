@@ -1,23 +1,22 @@
 require 'urnon/script/script'
 
 class ExecScript < Script
-  def self.id()
-    Script.atomic {
-      num = '1'; num.succ! while Script.running.any? { |s| s.is_a?(ExecScript) && s.id == num }
-      return num
-    }
-  end
-
   def self.start(...)
     self.new(...)
   end
 
   attr_reader :contents, :id
   def initialize(contents, opts={})
-    @id   = ExecScript.id()
+    scripts = opts.fetch(:session).scripts
+    scripts.tap {|scripts|
+      scripts.atomic {
+        num = '1'; num.succ! while scripts.running.any? { |s| s.is_a?(ExecScript) && s.id == num }
+        @id = num
+      }
+    }
     @name = "exec/#{@id}"
     super(opts.merge({name: @name, file_name: @name})) { |script|
-      Script.runtime(script.session)
+      scripts.runtime(script.session)
             .eval(contents, script.name)
     }
   end

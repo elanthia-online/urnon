@@ -1,6 +1,7 @@
 class Spells
   class Record
-    attr_reader :num, :name, :timestamp, :msgup, :msgdn, :circle, :active, :type, :cast_proc,
+    attr_reader :num, :name, :timestamp, :msgup, :msgdn,
+                :circle, :type, :cast_proc,
                 :real_time, :persist_on_death, :availability, :no_incant
     attr_accessor :stance, :channel
 
@@ -72,7 +73,6 @@ class Spells
       @cast_proc.untaint
       @timestamp = Time.now
       @timeleft = 0
-      @active = false
       @circle = (num.to_s.length == 3 ? num.to_s[0..0] : num.to_s[0..1])
       self
     end
@@ -136,22 +136,20 @@ class Spells
     end
 
     def timeleft=(val)
-      @timeleft = val
-      @timestamp = Time.now
+      #$stdout << "sess=%s spell=%s timeleft=%s\ntrace:\n%s\n" % [Session.current.name, self.num, val, Thread.current.backtrace.join("\n")]
+      Session.current.spells.tracking.tap {|tracking|
+        return tracking.delete(self.num) if val.eql?(0)
+        tracking[self.num] = Time.now + val
+      }
     end
 
     def timeleft
-      if self.time_per_formula.to_s == 'Spellsong.timeleft'
-        @timeleft = Spellsong.timeleft
-      else
-        @timeleft = @timeleft - ((Time.now - @timestamp) / 60.to_f)
-        if @timeleft <= 0
-          self.putdown
-          return 0.to_f
-        end
-      end
-      @timestamp = Time.now
-      @timeleft
+      sess = Session.current
+      fail "cannot determine timeleft without a session" if sess.nil?
+      return Spellsong.timeleft if self.time_per_formula.to_s == 'Spellsong.timeleft'
+      duration = sess.spells.tracking[self.num]
+      return 0 if duration.nil?
+      [duration - Time.now, 0].max
     end
 
     def minsleft
@@ -162,12 +160,8 @@ class Spells
       self.timeleft * 60
     end
 
-    def active=(val)
-      @active = val
-    end
-
     def active?
-      (self.timeleft > 0) and @active
+      self.timeleft > 0
     end
 
     def stackable?(options={})
@@ -330,6 +324,12 @@ class Spells
       to_s
     end
 
+    def active=(val)
+      if ENV["DEBUG"]
+        puts "%s\n%s" % ["Spell.active= is deprecated", Thread.current.backtrace.join("\n")]
+      end
+    end
+
     def max_duration(options={})
       if options[:caster] and (options[:caster] !~ /^(?:self|#{XMLData.name})$/i)
         if options[:target] and (options[:target].downcase == options[:caster].downcase)
@@ -352,12 +352,10 @@ class Spells
       else
         self.timeleft = [ self.time_per(options), self.max_duration(options) ].min
       end
-      @active = true
     end
 
     def putdown
       self.timeleft = 0
-      @active = false
     end
 
     def remaining

@@ -16,9 +16,9 @@ class SqlSetting < Module
         self.decode self.table.first(**self.query).fetch(:hash)
       end
 
-      define_method :save do |hash|
+      def save(hash={})
         blob = Sequel.blob(Marshal.dump(hash))
-        self.table.insert_conflict(:update).insert(**self.query.merge({hash: blob}))
+        self.table.insert_conflict(:replace).insert(**self.query.merge({hash: blob}))
       end
 
       def decode(blob)

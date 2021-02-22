@@ -1,3 +1,4 @@
+require 'urnon/util/escape'
 require 'urnon/xml/xml-parser'
 require 'urnon/script/runtime'
 require 'urnon/script/sandbox'
@@ -12,7 +13,12 @@ require 'urnon/session/society'
 require 'urnon/session/skills'
 require 'urnon/session/cman'
 require 'urnon/spells/spells'
+
+require 'urnon/session/upstream-hook'
+require 'urnon/session/downstream-hook'
+
 require 'urnon/map/room'
+require 'urnon/script/registry'
 
 
 class Session
@@ -30,15 +36,23 @@ class Session
   end
 
   def self.current()
+    return Thread.current[:session] if Thread.current[:session].is_a?(Session)
     script = Script.current
+    return nil unless script.is_a?(Script)
     return nil if script.nil?
     sleep 0.1 while script.session.name.empty?
-    return yield(script.session, script) if block_given?
+    return yield(script.session) if block_given?
     return script.session
   end
 
   def self.others()
     self.reject {|sess| sess.eql?(self.current)}
+  end
+
+  def self.get(name)
+    self.find {|session|
+      session.name.downcase.eql?(name.to_s.downcase)
+    }
   end
 
   def self.open(game_host, game_port, client_port)
@@ -52,12 +66,12 @@ class Session
               :real_port,
               :server_buffer, :client_buffer, :lock, :last_recv,
               :login_time,  :xml_data, :gift, :game_obj_registry,
-              :stats, :char, :wounds, :scars, :society, :skills,
-              :cman
+              :stats, :char, :wounds, :scars, :society, :skills, :spells,
+              :cman, :scripts, :upstream_hooks, :downstream_hooks
 
   def initialize(game_host, game_port, client_port)
-    @lock      = Mutex.new
-
+    @lock              = Mutex.new
+    @scripts           = Script::Registry.new(self)
     # refactored Lich singletons
     @xml_data          = Urnon::XMLParser.new(self)
     @game_obj_registry = GameObj::Registry.new()
@@ -68,8 +82,11 @@ class Session
     @society           = Society.new(self)
     @skills            = Skills.new(self)
     @spells            = Spells.new(self)
+    @upstream_hooks    = UpstreamHook.new(self)
+    @downstream_hooks  = DownstreamHook.new(self)
     @room              = Room.new(self)
     @cman              = CMan.new
+
     # must be attached last because of former Lich hijinx
     @char              = Char.new(self)
 
@@ -120,7 +137,7 @@ class Session
               incoming.sub!('<pushStream id="familiar" />', '')
             end
             self.server_buffer.push(incoming)
-            if alt_string = DownstreamHook.run(incoming, self)
+            if alt_string = @downstream_hooks.run(incoming)
               #pp alt_string
               if @client_sock
                 begin
@@ -153,11 +170,11 @@ class Session
                 end
                 self.xml_data.reset
               end
-              Script.new_downstream_xml(incoming)
+              @scripts.new_downstream_xml(incoming)
               stripped_server = strip_xml(incoming)
               (stripped_server || "").split("\r\n").each { |line|
                 @buffer.update(line) if TESTING
-                Script.new_downstream(line) unless line.empty?
+                @scripts.new_downstream(line) unless line.empty?
               }
             end
           rescue
@@ -166,12 +183,7 @@ class Session
           end
         end
       rescue Exception => e
-        Log.out(e, lable: :game_error)
-        Lich.log "error: server_thread: #{$!}\n\t#{$!.backtrace.join("\n\t")}"
-        $stdout.puts "--- error: server_thread: #{$!}"
-        sleep 0.2
-        retry unless @game_socket.closed? or ($!.to_s =~ /invalid argument|A connection attempt failed|An existing connection was forcibly closed|An established connection was aborted by the software in your host machine./i)
-      rescue
+        Log.out(e, label: :game_error)
         Lich.log "error: server_thread: #{$!}\n\t#{$!.backtrace.join("\n\t")}"
         $stdout.puts "--- error: server_thread: #{$!}"
         sleep 0.2
@@ -254,7 +266,7 @@ class Session
   end
 
   def to_client(str)
-    self.client_sock.write str
+    self.client_sock.write Urnon::Escape.to_front_end(str.strip + "\n")
     self
   end
 

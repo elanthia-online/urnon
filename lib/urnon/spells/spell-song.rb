@@ -101,4 +101,8 @@ module Spellsong
   def self.load_serialized=(...)
     # todo: deprecated
   end
+
+  def self.serialize()
+    []
+  end
 end

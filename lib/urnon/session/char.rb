@@ -11,7 +11,7 @@ class Char
   attr_reader :session
 
   def initialize(session)
-    @session = session
+    @session       = session
     @citizenship ||= nil
     attach_proxies
   end
@@ -37,19 +37,6 @@ class Char
     [@session.stats, @session.skills, @session.society]
   end
 
-=begin
-  def respond_to?(method)
-    proxies.any? {|interface|
-      interface.respond_to?(method)
-    }
-  end
-
-  def method_missing(method, *args)
-    return unless self.respond_to?(method)
-    impl = proxies.find {|interface| interface.respond_to?(method)}
-    impl.send(method, *args)
-  end
-=end
 
   %i(health mana spirit stamina).each do |prop|
     # checkmana, checkstamina, etc

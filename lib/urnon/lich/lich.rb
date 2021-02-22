@@ -1,10 +1,16 @@
 require 'sequel'
+require 'logger'
 
 module Lich
   @@lich_db = nil
 
+  def self._db()
+    Sequel.sqlite(
+      File.join(DATA_DIR, 'lich.db3'), loggers: [Logger.new($stdout)])
+  end
+
   def Lich.db
-    @@lich_db ||= Sequel.sqlite File.join(DATA_DIR, 'lich.db3')
+    @@lich_db ||= _db()
   end
 
   def Lich.init_db
