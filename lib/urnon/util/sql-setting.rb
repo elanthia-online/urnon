@@ -40,20 +40,22 @@ class SqlSetting < Module
       end
 
       def [](name)
-        #pp("%s[query=%s, :%s]" % [self.query, self.name, name], self.fetch)
         self.fetch[name]
       end
 
       def delete(name)
         vars = self.fetch
         vars.delete(name)
-        save(vars)
+        self.save(vars)
+        vars
       end
 
       def []=(name, val)
         return delete(name) if val.nil?
         vars = self.fetch
         vars[name] = val
+        self.save(vars)
+        vars
       end
 
       def to_hash
