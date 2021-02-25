@@ -47,32 +47,33 @@ module Client
       #{$clean_lich_char}autostart help
    HELP
 
+
+
   def self.call(client_string, session)
     begin
       client_string.strip!
       if client_string == "<c>exit" or client_string == "<c>quit"
         session.close()
-        return Kernel::exit()
       end
-      client_string = UpstreamHook.run(client_string, session)
+      client_string = session.upstream_hooks.run(client_string)
       return unless client_string.is_a?(String)
       if client_string =~ /^(?:<c>)?#{$lich_char}(.+)$/
         cmd = $1
         if cmd =~ /^k$|^kill$|^stop$/
-            if Script.running.empty?
+            if session.scripts.running.empty?
               session.to_client '--- Lich: no scripts to kill'
             else
-              Script.running.last.kill
+              session.scripts.running.last.kill
             end
         elsif cmd =~ /^p$|^pause$/
-            if s = Script.running.reverse.find { |s| not s.paused? }
+            if s = session.scripts.running.reverse.find { |s| not s.paused? }
               s.pause
             else
               session.to_client '--- Lich: no scripts to pause'
             end
             s = nil
         elsif cmd =~ /^u$|^unpause$/
-            if s = Script.running.reverse.find { |s| s.paused? }
+            if s = session.scripts.running.reverse.find { |s| s.paused? }
               s.unpause
             else
               session.to_client '--- Lich: no scripts to unpause'
@@ -80,20 +81,20 @@ module Client
             s = nil
         elsif cmd =~ /^ka$|^kill\s?all$|^stop\s?all$/
             did_something = false
-            Script.running.find_all { |s| not s.no_kill_all }.each { |s| s.kill; did_something = true }
+            session.scripts.running.find_all { |s| not s.no_kill_all }.each { |s| s.kill; did_something = true }
             session.to_client('--- Lich: no scripts to kill') unless did_something
         elsif cmd =~ /^pa$|^pause\s?all$/
             did_something = false
-            Script.running.find_all { |s| not s.paused? and not s.no_pause_all }.each { |s| s.pause; did_something  = true }
+            session.scripts.running.find_all { |s| not s.paused? and not s.no_pause_all }.each { |s| s.pause; did_something  = true }
             session.to_client('--- Lich: no scripts to pause') unless did_something
         elsif cmd =~ /^ua$|^unpause\s?all$/
             did_something = false
-            Script.running.find_all { |s| s.paused? and not s.no_pause_all }.each { |s| s.unpause; did_something = true }
+            session.scripts.running.find_all { |s| s.paused? and not s.no_pause_all }.each { |s| s.unpause; did_something = true }
             session.to_client('--- Lich: no scripts to unpause') unless did_something
         elsif cmd =~ /^(k|kill|stop|p|pause|u|unpause)\s(.+)/
             action = $1
             target = $2
-            script = (Script.running + Script.hidden)
+            script = (session.scripts.running + session.scripts.hidden)
               .find { |s|
                 s.name.start_with?(target) or s.name.split("/").last.start_with?(target)
               }
@@ -110,9 +111,9 @@ module Client
             action = target = script = nil
         elsif cmd =~ /^list\s?(?:all)?$|^l(?:a)?$/i
             if cmd =~ /a(?:ll)?/i
-              list = Script.running + Script.hidden
+              list = session.scripts.running + session.scripts.hidden
             else
-              list = Script.running
+              list = session.scripts.running
             end
             if list.empty?
               session.to_client '--- Lich: no active scripts'
@@ -122,13 +123,13 @@ module Client
             list = nil
         elsif cmd =~ /^force\s+[^\s]+/
             if cmd =~ /^force\s+([^\s]+)\s+(.+)$/
-              Script.start($1, $2, session, :force => true)
+              session.scripts.start($1, $2, session, :force => true)
             elsif cmd =~ /^force\s+([^\s]+)/
-              Script.start($1, session, :force => true)
+              session.scripts.start($1, session, :force => true)
             end
         elsif cmd =~ /^send |^s /
           if cmd.split[1] == "to"
-            script = (Script.running + Script.hidden).find { |scr| scr.name == cmd.split[2].chomp.strip } || script = (Script.running + Script.hidden).find { |scr| scr.name =~ /^#{cmd.split[2].chomp.strip}/i }
+            script = (session.scripts.running + session.scripts.hidden).find { |scr| scr.name == cmd.split[2].chomp.strip } || script = (session.scripts.running + session.scripts.hidden).find { |scr| scr.name =~ /^#{cmd.split[2].chomp.strip}/i }
             if script
                 msg = cmd.split[3..-1].join(' ').chomp
                 if script.want_downstream
@@ -142,24 +143,24 @@ module Client
             end
             script = nil
           else
-            if Script.running.empty? and Script.hidden.empty?
+            if session.scripts.running.empty? and session.scripts.hidden.empty?
                 session.to_client('--- Lich: no active scripts to send to.')
             else
                 msg = cmd.split[1..-1].join(' ').chomp
                 session.to_client("--- sent: #{msg}")
-                Script.new_downstream(msg)
+                session.scripts.new_downstream(msg)
             end
           end
         elsif cmd =~ /^(?:exec|e)(q)? (.+)$/
           cmd_data = $2
-          ExecScript.start(cmd_data, {quiet: $1.is_a?(String), session: session})
+          session.scripts.start_exec_script(cmd_data, {quiet: $1.is_a?(String)})
         elsif cmd =~ /^help$/i
           session.to_client HELP_MENU
         else
           if cmd =~ /^([^\s]+)\s+(.+)/
-            Script.start($1, $2, session: session)
+            session.scripts.start($1, $2)
           else
-            Script.start(cmd, session: session)
+            session.scripts.start(cmd)
           end
         end
       else
@@ -167,7 +168,7 @@ module Client
         session._puts client_string
         session.client_buffer.push client_string
       end
-      Script.new_upstream(client_string)
+      session.scripts.new_upstream(client_string)
     rescue Exception => exception
       $stderr << exception.message
       $stderr << exception.backtrace.join("\n")

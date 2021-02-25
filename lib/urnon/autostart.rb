@@ -20,12 +20,12 @@ module Autostart
 
   def self.start(session, script)
     (script, *argv)= script.strip.split(/\s+/)
-    return if Script.running?(script)
-    return unless Script.exists?(script)
-    Script.start(script, argv.join(" "), session: session)
+    return if session.scripts.running?(script)
+    return unless session.scripts.exists?(script)
+    _running = session.scripts.start(script, argv.join(" "))
     ttl = Time.now + 3
-    sleep 0.1 until Script.running?(script) or Time.now > ttl
-    respond "autostart: error: #{script} failed to start" if Time.now > ttl
+    sleep 0.1 until session.scripts.running?(script) or Time.now > ttl
+    session.to_client "autostart: error: #{script} failed to start" if Time.now > ttl
   end
 
   def self.launch_global_yaml(session)
@@ -47,7 +47,7 @@ module Autostart
   end
 
   def self.autostart_lich_script(session)
-    return Script.start("autostart", session: session) if Script.exists?("autostart")
+    return session.scripts.start("autostart") if session.scripts.exists?("autostart")
   end
 
   def self.call(session)

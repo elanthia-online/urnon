@@ -12,13 +12,13 @@ class Sessionize < Module
         receiver.methods(...)
       end
 
-      def respond_to?(...)
-        self.receiver.respond_to?(...) or super(...)
+      def respond_to?(method)
+        self.receiver.respond_to?(method) or super(method)
       end
 
-      def method_missing(...)
-        return super unless self.respond_to?(...)
-        self.receiver.send(...)
+      def method_missing(method, *args, &block)
+        return super unless self.respond_to?(method)
+        self.receiver.send(method, *args, &block)
       end
     end
   end

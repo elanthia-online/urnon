@@ -12,7 +12,7 @@ RSpec.describe Map::Cache do
     map
       .reject {|room| Map::Cache.dropped?(room["id"])}
       .each {|room|
-        decoded = Map::Cache.find_by_id(room["id"])
+        decoded = Map::Cache.by_id[room["id"]]
 
         expect(decoded["title"]).to eq(room["title"])
         expect(decoded["description"]).to eq(room["description"])
@@ -32,7 +32,7 @@ RSpec.describe Map::Cache do
   end
 
   it "fast lookups by tags" do
-    rooms = Map::Cache.find_by_tag("acantha leaf")
+    rooms = Map::Cache.by_tag["acantha leaf"]
     expect(rooms.size).to be > 1
   end
 
@@ -51,7 +51,7 @@ RSpec.describe Map::Cache do
             paths:       paths
           )
           expect(found_by_fingerprint).to(
-            include Map::Cache.find_by_id(room["id"]))
+            include Map::Cache.by_id[room["id"]])
         }
       }
   end

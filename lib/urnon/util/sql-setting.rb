@@ -16,9 +16,9 @@ class SqlSetting < Module
         self.decode self.table.first(**self.query).fetch(:hash)
       end
 
-      define_method :save do |hash|
+      def save(hash={})
         blob = Sequel.blob(Marshal.dump(hash))
-        self.table.insert_conflict(:update).insert(**self.query.merge({hash: blob}))
+        self.table.insert_conflict(:replace).insert(**self.query.merge({hash: blob}))
       end
 
       def decode(blob)
@@ -40,20 +40,22 @@ class SqlSetting < Module
       end
 
       def [](name)
-        #pp("%s[query=%s, :%s]" % [self.query, self.name, name], self.fetch)
         self.fetch[name]
       end
 
       def delete(name)
         vars = self.fetch
         vars.delete(name)
-        save(vars)
+        self.save(vars)
+        vars
       end
 
       def []=(name, val)
         return delete(name) if val.nil?
         vars = self.fetch
         vars[name] = val
+        self.save(vars)
+        vars
       end
 
       def to_hash

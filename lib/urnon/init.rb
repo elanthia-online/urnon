@@ -24,21 +24,16 @@ require 'urnon/settings/vars'
 require 'urnon/settings/user-vars'
 ## Lich stuff
 require 'urnon/lich/string-proc'
-require 'urnon/lich/upstream-hook'
-require 'urnon/lich/downstream-hook'
 require 'urnon/lich/watchfor'
 require 'urnon/lich/decoders'
 
 # map
 require 'urnon/map/room'
 
-
 require 'urnon/util/synchronized-socket'
 require 'urnon/util/limited-array'
 require 'urnon/util/format'
 require 'urnon/util/shared-buffer'
-
-require 'urnon/lich/gtk3'
 
 # - Migrated Lich Utils
 require 'urnon/session' # was Game
@@ -52,10 +47,10 @@ require 'urnon/autostart'
 require 'urnon/constants'
 # hacky closure for now
 module Urnon
+  FOLDERS = [TEMP_DIR, DATA_DIR, SCRIPT_DIR, MAP_DIR, LOG_DIR, BACKUP_DIR]
+
   def self.setup()
-    [TEMP_DIR, DATA_DIR, SCRIPT_DIR, MAP_DIR, LOG_DIR, BACKUP_DIR].each do |dir|
-      FileUtils.mkdir_p(dir)
-    end
+    FOLDERS.each do |dir| FileUtils.mkdir_p(dir) end
     Lich.init_db
   end
 
@@ -81,23 +76,20 @@ module Urnon
       game_code: argv.game_code,
       character: argv.character)
 
-    pp "login=%s" % argv.character
+    #
+    # connect to GSIV only for right now
+    #
+    session = Session.open(
+      login_info["gamehost"],
+      login_info["gameport"],
+      argv.port)
 
-    Thread.new {
-      #
-      # connect to GSIV only for right now
-      #
-      session = Session.open(
-        login_info["gamehost"],
-        login_info["gameport"],
-        argv.port)
+    session.init(login_info["key"])
+    sleep 0.1 until session.closed?
+    session.scripts.each(&:kill)
+  end
 
-      session.init(login_info["key"])
-      sleep 0.1 until session.closed?
-      #Thread.current.priority = -10
-      #Gtk.main
-      Script.list.each { |script| script.kill if script.session.eql?(session) }
-      session.close
-    }
+  def self.init_async(...)
+    Thread.new {self.init(...)}
   end
 end

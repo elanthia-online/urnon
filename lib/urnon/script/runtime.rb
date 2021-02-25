@@ -1,9 +1,6 @@
-require 'urnon/lich/downstream-hook'
-require 'urnon/lich/upstream-hook'
 require 'urnon/util/escape'
 require 'urnon/session'
 require 'urnon/xml/xml-data'
-
 
 def hide_me(*args)
   :noop
@@ -1461,9 +1458,9 @@ def matchfindword(*strings)
 end
 
 def send_scripts(*messages)
-  Script.current
+  script = Script.current
   messages.flatten!
-  messages.each { |message| Script.new_downstream(message) }
+  messages.each { |message| Script.new_downstream(message, session: Session.current) }
   true
 end
 
@@ -1496,9 +1493,10 @@ end
 
 def _respond(*messages)
   script = Script.current
+  return pp(*messages) if script.nil?
   messages.each {|line|
     Script.new_script_output(line)
-    script.session.to_client(line + "\n")
+    Session.current.client_sock.write(line + "\n")
   }
 end
 
@@ -2122,8 +2120,8 @@ def monsterbold_end
 end
 
 def do_client(*args)
-  script = Script.current
-  args.each {|command| Client.call(command, script.session) }
+  session = Session.current
+  args.each {|command| Client.call(command, session) }
 end
 
 def report_errors(&block)
