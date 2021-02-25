@@ -24,9 +24,9 @@ class UpstreamHook
         self.hooks.delete(key)
         next
       end
-      client_string = self
-        .task(key, hook, script, client_string)
-        .value
+      t = self.task(key, hook, script, client_string)
+      client_string = t.value
+      t.join.kill
       return nil if client_string.nil?
     end
     return client_string

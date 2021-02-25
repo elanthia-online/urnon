@@ -24,7 +24,9 @@ class DownstreamHook
         self.hooks.delete(key)
         next
       end
-      server_string = self.task(key, hook, script, server_string).value
+      t = self.task(key, hook, script, server_string)
+      server_string = t.value
+      t.kill.join
       return nil if server_string.nil?
     end
     return server_string

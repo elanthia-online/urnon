@@ -1496,7 +1496,7 @@ def _respond(*messages)
   return pp(*messages) if script.nil?
   messages.each {|line|
     Script.new_script_output(line)
-    Session.current.to_client(line + "\n")
+    Session.current.client_sock.write(line + "\n")
   }
 end
 

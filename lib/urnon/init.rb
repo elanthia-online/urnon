@@ -47,10 +47,10 @@ require 'urnon/autostart'
 require 'urnon/constants'
 # hacky closure for now
 module Urnon
+  FOLDERS = [TEMP_DIR, DATA_DIR, SCRIPT_DIR, MAP_DIR, LOG_DIR, BACKUP_DIR]
+
   def self.setup()
-    [TEMP_DIR, DATA_DIR, SCRIPT_DIR, MAP_DIR, LOG_DIR, BACKUP_DIR].each do |dir|
-      FileUtils.mkdir_p(dir)
-    end
+    FOLDERS.each do |dir| FileUtils.mkdir_p(dir) end
     Lich.init_db
   end
 
@@ -76,23 +76,20 @@ module Urnon
       game_code: argv.game_code,
       character: argv.character)
 
-    pp "login=%s" % argv.character
+    #
+    # connect to GSIV only for right now
+    #
+    session = Session.open(
+      login_info["gamehost"],
+      login_info["gameport"],
+      argv.port)
 
+    session.init(login_info["key"])
+    sleep 0.1 until session.closed?
+    session.scripts.each(&:kill)
+  end
 
-    Thread.new {
-      #
-      # connect to GSIV only for right now
-      #
-      session = Session.open(
-        login_info["gamehost"],
-        login_info["gameport"],
-        argv.port)
-
-      session.init(login_info["key"])
-      Thread.current.priority = -5
-      sleep 0.1 until session.closed?
-      Script.list.each { |script| script.kill if script.session.eql?(session) }
-      session.close
-    }
+  def self.init_async(...)
+    Thread.new {self.init(...)}
   end
 end

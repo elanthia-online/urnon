@@ -16,8 +16,7 @@ module Urnon
                     aliases: "-c"
 
       def login()
-        Thread.main.priority = -10
-        session_threads = options.chars.map { |name| Urnon.init(name) }
+        session_threads = options.chars.map { |name| Urnon.init_async(name) }
         sleep 0.1 while session_threads.any?(&:alive?)
       end
 

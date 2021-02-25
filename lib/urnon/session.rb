@@ -117,7 +117,6 @@ class Session
   end
 
   def connect_to_game()
-    pp "connecting to %s:%s" % [self.game_host, self.game_port]
     @game_socket = TCPSocket.open(self.game_host, self.game_port)
     @game_socket.setsockopt(Socket::SOL_SOCKET, Socket::SO_KEEPALIVE, true)
     @game_socket.sync = true
@@ -161,9 +160,9 @@ class Session
               rescue
                 unless ($! || "").to_s =~ /invalid byte sequence/
                   if incoming =~ /<[^>]+='[^=>'\\]+'[^=>']+'[\s>]/
-                      # Simu has a nasty habbit of bad quotes in XML.  <tag attr='this's that'>
-                      incoming.gsub!(/(<[^>]+=)'([^=>'\\]+'[^=>']+)'([\s>])/) { "#{$1}\"#{$2}\"#{$3}" }
-                      retry
+                    # Simu has a nasty habbit of bad quotes in XML.  <tag attr='this's that'>
+                    incoming.gsub!(/(<[^>]+=)'([^=>'\\]+'[^=>']+)'([\s>])/) { "#{$1}\"#{$2}\"#{$3}" }
+                    retry
                   end
                   $stdout.puts "--- error: server_thread: #{$!}"
                   Lich.log "error: server_thread: #{$!}\n\t#{$!.backtrace.join("\n\t")}"
@@ -234,16 +233,12 @@ class Session
     SESSIONS[self.name] = self
   end
 
-  def dispose()
-    SESSIONS.delete(self.name)
-  end
-
   def close
-    self.game_socket.close rescue nil
-    self.game_thread.kill rescue nil
-    self.client_sock.close rescue nil
-    self.client_thread.kill rescue nil
-    self.dispose
+    self.game_socket.close
+    self.game_thread.kill
+    self.client_sock.close
+    self.client_thread.kill
+    SESSIONS.delete(self.name)
   end
 
   def _puts(str)

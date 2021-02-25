@@ -54,7 +54,6 @@ module Client
       client_string.strip!
       if client_string == "<c>exit" or client_string == "<c>quit"
         session.close()
-        return Kernel::exit()
       end
       client_string = session.upstream_hooks.run(client_string)
       return unless client_string.is_a?(String)
