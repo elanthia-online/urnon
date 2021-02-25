@@ -86,7 +86,6 @@ module Urnon
 
     session.init(login_info["key"])
     sleep 0.1 until session.closed?
-    session.scripts.each(&:kill)
   end
 
   def self.init_async(...)
