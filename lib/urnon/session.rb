@@ -234,6 +234,7 @@ class Session
   end
 
   def close
+    session.scripts.each(&:kill)
     self.game_socket.close
     self.game_thread.kill
     self.client_sock.close
