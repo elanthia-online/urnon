@@ -14,7 +14,9 @@ class Script < Thread
     end
 
     def each(...)
-      self.running.each(...)
+      self.running
+        .select {|t| t.is_a?(Script)}
+        .each(...)
     end
 
     def hidden()

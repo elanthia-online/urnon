@@ -219,6 +219,7 @@ class Script < Thread
   def pause
     respond "--- urnon: #{@name} paused."
     @paused = true
+    sleep 0.1 while @paused
   end
 
   def unpause
