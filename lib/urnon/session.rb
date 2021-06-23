@@ -234,7 +234,9 @@ class Session
   end
 
   def close
-    session.scripts.each(&:kill)
+    self.scripts.each(&:kill)
+    ttl = Time.now + 5
+    sleep 0.1 until self.scripts.to_a.empty? || Time.now > ttl
     self.game_socket.close
     self.game_thread.kill
     self.client_sock.close
