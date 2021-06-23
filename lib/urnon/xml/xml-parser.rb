@@ -5,8 +5,9 @@ module Urnon
     attr_reader :mana, :max_mana, :health, :max_health, :spirit, :max_spirit,
                 :last_spirit, :stamina, :max_stamina, :stance_text, :stance_value,
                 :mind_text, :mind_value, :prepared_spell, :encumbrance_text,
-                :encumbrance_full_text, :encumbrance_value, :indicator, :injuries,
-                :injury_mode, :room_count, :room_title, :room_description, :room_exits,
+                :encumbrance_full_text, :encumbrance_value, :indicator,
+                :injuries, :injury_mode,
+                :room_count, :room_title, :room_description, :room_exits, :room_id,
                 :room_exits_string, :familiar_room_title, :familiar_room_description,
                 :familiar_room_exits, :bounty_task, :injury_mode, :server_time,
                 :server_time_offset, :roundtime_end, :cast_roundtime_end, :last_pulse,
@@ -14,6 +15,7 @@ module Urnon
                 :stow_container_id, :name, :game, :in_stream, :player_id,
                 :active_spells, :prompt, :current_target_ids, :current_target_id,
                 :room_window_disabled, :session
+
     attr_accessor :send_fake_tags
 
     include REXML::StreamListener
@@ -23,8 +25,8 @@ module Urnon
       @buffer = ''
       @unescape = { 'lt' => '<', 'gt' => '>', 'quot' => '"', 'apos' => "'", 'amp' => '&' }
       @bold = false
-      @active_tags = Array.new
-      @active_ids = Array.new
+      @active_tags = []
+      @active_ids = []
       @last_tag = ''
       @last_id = ''
       @current_stream = ''
@@ -56,18 +58,19 @@ module Urnon
       @level = 0
       @next_level_value = 0
       @next_level_text = ''
-      @current_target_ids = Array.new
+      @current_target_ids = []
 
       @room_count = 0
       @room_updating = false
       @room_title = ''
+      @room_id    = nil
       @room_description = ''
-      @room_exits = Array.new
+      @room_exits = []
       @room_exits_string = ''
 
       @familiar_room_title = ''
       @familiar_room_description = ''
-      @familiar_room_exits = Array.new
+      @familiar_room_exits = []
 
       @bounty_task = ''
       @society_task = ''
@@ -104,8 +107,8 @@ module Urnon
     end
 
     def reset
-      @active_tags = Array.new
-      @active_ids = Array.new
+      @active_tags = []
+      @active_ids = []
       @current_stream = ''
       @current_style = ''
     end
@@ -158,8 +161,10 @@ module Urnon
             @obj_after_name = nil
           elsif name == 'dialogData' and attributes['id'] == 'ActiveSpells' and attributes['clear'] == 't'
             @active_spells.clear
-          elsif name == 'resource' or name == 'nav'
+          elsif name == 'resource'
             nil
+          elsif name == 'nav'
+            @room_id = attributes['rm'].to_i
           elsif name == 'pushStream'
             @in_stream = true
             @current_stream = attributes['id'].to_s
@@ -198,7 +203,7 @@ module Urnon
             elsif attributes['id'] == 'room players'
                 @session.game_obj_registry.clear_pcs
             elsif attributes['id'] == 'room exits'
-                @room_exits = Array.new
+                @room_exits = []
                 @room_exits_string = ''
             elsif attributes['id'] == 'room desc'
                 @room_description = ''
@@ -364,7 +369,7 @@ module Urnon
             if @current_stream == 'familiar'
                 @fam_mode = ''
             elsif @room_window_disabled
-                @room_exits = Array.new
+                @room_exits = []
             end
           elsif @room_window_disabled and (name == 'dir') and @active_tags.include?('compass')
             @room_exits.push(LONGDIR[attributes['value']])
@@ -572,7 +577,7 @@ module Urnon
             if @current_style == 'roomName'
                 @familiar_room_title = text_string
                 @familiar_room_description = ''
-                @familiar_room_exits = Array.new
+                @familiar_room_exits = []
                 @session.game_obj_registry.clear_fam_room_desc
                 @session.game_obj_registry.clear_fam_loot
                 @session.game_obj_registry.clear_fam_npcs

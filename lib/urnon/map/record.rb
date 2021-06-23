@@ -8,7 +8,7 @@ class Room
     attr_accessor :id, :title, :description, :paths,
                   :location, :climate, :terrain, :wayto,
                   :timeto, :image, :image_coords, :tags,
-                  :check_location, :unique_loot
+                  :check_location, :unique_loot, :real_id
 
     def initialize(**vars)
       vars.each {|k, v| self.instance_variable_set("@%s" % k, v) }
